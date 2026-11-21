@@ -1,0 +1,39 @@
+{
+  "_note": "Real data: AITD Kanpur tentative timetable 2026-27 odd sem (I AI & ML, room B-202, w.e.f. 21/09/2026) and the AKTU B.Tech first-year CSE scheme. Slot = [period, periods it spans, subject id, lab group (optional)].",
+  "questions": [
+    {"id":"who","t":"Who teaches this?"},
+    {"id":"when","t":"When do I have it this week?"},
+    {"id":"where","t":"Where is it held?"},
+    {"id":"marks","t":"How many credits and marks?"}
+  ],
+  "branches": {
+    "cse-aiml": {
+      "name": "CSE-AIML", "semester": 1, "section": "I AI & ML", "classroom": "B-202", "groups": [1, 2],
+      "periods": [[1,"10:00","11:00"],[2,"11:00","12:00"],[3,"12:00","1:00"],[4,"1:00","2:00"],[5,"2:00","3:00"],[6,"3:00","4:00"],[7,"4:00","5:00"]],
+      "subjects": [
+        {"id":"fece","short":"FEcE","code":"AEC101","name":"Fundamentals of Electronics Engineering","type":"Theory","ltp":"2-1-0","credits":"3","marks":"30 internal + 70 exam","teacher":"Shashank Srivastava","venue":"B-202","where":"b202"},
+        {"id":"fme","short":"FME","code":"AME101","name":"Fundamentals of Mechanical Engineering","type":"Theory","ltp":"2-0-0","credits":"2","marks":"30 internal + 70 exam","teacher":"Dr Parijat Srivastava","venue":"B-202","where":"b202"},
+        {"id":"chem","short":"Applied Chemistry","code":"AAS102","name":"Applied Chemistry for Smart Systems","type":"Theory","ltp":"3-0-0","credits":"3","marks":"30 internal + 70 exam","teacher":"Dr. Om Hari","venue":"B-202","where":"b202"},
+        {"id":"plang","short":"PLanguage","code":"ACS101","name":"Programming Languages","type":"Theory","ltp":"2-1-0","credits":"3","marks":"30 internal + 70 exam","teacher":"Pragati Dwivedi","venue":"B-202","where":"b202"},
+        {"id":"cla","short":"CLA","code":"AAS103","name":"Calculus and Linear Algebra","type":"Theory","ltp":"3-1-0","credits":"4","marks":"30 internal + 70 exam","teacher":"Dr. Divya Mishra","venue":"B-202","where":"b202"},
+        {"id":"pctw","short":"PC&TW","code":"AAS105","name":"Professional Communication & Technical Writing","type":"Theory","ltp":"2-0-0","credits":"2","marks":"30 internal + 70 exam","teacher":"Dr Soniya Agrawal","venue":"B-202","where":"b202"},
+        {"id":"gp","short":"GP","code":"AGP151","name":"General Proficiency","type":"Non-credit","ltp":"0-0-2","credits":"non-credit","marks":"50 internal","teacher":"Tanushree Banerjee","venue":"B-202","where":"b202"},
+        {"id":"chemlab","short":"Applied Chemistry Lab","code":"AAS152","name":"Applied Chemistry for Smart Systems Lab","type":"Lab","ltp":"0-0-2","credits":"1","marks":"50 internal + 50 exam","teacher":"DOH / Dr DP Singh","venue":"CY Lab, B-101"},
+        {"id":"idtlab","short":"I&DT Lab","code":"AID151","name":"Innovation & Design Thinking Lab (Project-Based Learning)","type":"Lab","ltp":"0-1-2","credits":"2","marks":"50 internal + 50 exam","teacher":"Dr Parijat Srivastava","venue":"Workshop 1, D-104"},
+        {"id":"beclab","short":"BEC Lab","code":"AEC151","name":"Electronics Engineering Lab","type":"Lab","ltp":"0-0-2","credits":"1","marks":"50 internal + 50 exam","teacher":"Shashank Srivastava","venue":"E-113"},
+        {"id":"englab","short":"English Language Lab","code":"AAS153","name":"Language Lab","type":"Lab (non-credit)","ltp":"0-0-2","credits":"non-credit","marks":"50 internal + 50 exam","teacher":"Dr Soniya Agrawal","venue":"English language lab, 2nd floor","where":"eng"},
+        {"id":"complab","short":"Computer lab","name":"Computer lab","type":"Lab","teacher":"Pragati Dwivedi","venue":"Computer lab","extra":true},
+        {"id":"sports","short":"Sports / Games","name":"Sports / Games","type":"Activity","teacher":"Kamlesh Kumar Yadav","venue":"Sports","extra":true},
+        {"id":"library","short":"Library","name":"Library / Coordinator Activity","type":"Activity","venue":"Library","where":"lib","extra":true}
+      ],
+      "days": {
+        "Monday":   [[1,1,"fece"],[2,1,"fme"],[3,1,"chem"],[5,1,"plang"],[6,1,"gp"],[7,1,"sports"]],
+        "Tuesday":  [[1,1,"cla"],[2,1,"pctw"],[3,1,"fece"],[5,1,"gp"],[6,2,"chemlab",1],[6,2,"idtlab",2]],
+        "Wednesday":[[1,1,"plang"],[2,1,"cla"],[3,1,"pctw"],[5,1,"fece"],[6,2,"beclab",1],[6,2,"englab",2]],
+        "Thursday": [[1,1,"fme"],[2,1,"pctw"],[3,1,"chem"],[5,1,"cla"],[6,1,"cla"],[7,1,"fece"]],
+        "Friday":   [[1,1,"pctw"],[2,2,"idtlab",1],[2,2,"beclab",2],[5,1,"cla"],[6,1,"plang"],[7,1,"complab"]],
+        "Saturday": [[1,1,"library"],[2,1,"fece"],[3,1,"chem"],[5,1,"cla"],[6,2,"englab",1],[6,2,"chemlab",2]]
+      }
+    }
+  }
+}

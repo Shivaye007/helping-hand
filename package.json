@@ -1,0 +1,16 @@
+{
+  "name": "helping-hand",
+  "version": "1.0.0",
+  "description": "Helping Hand: AI campus guide for AITD Kanpur (Gemini powered)",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node scripts/check-map.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
