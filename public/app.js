@@ -3,16 +3,83 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const root = $("#root");
 const BRANCH = "cse-aiml";
-const MASCOT = `<svg class="mascot" viewBox="-10 -5 220 225" role="img" aria-label="Helping Hand mascot">
-<g stroke="#14213D" stroke-width="5" stroke-linejoin="round" fill="#FFC83D">
-<rect x="54" y="38" width="22" height="92" rx="11"/><rect x="78" y="22" width="22" height="108" rx="11"/>
-<rect x="102" y="30" width="22" height="100" rx="11"/><rect x="126" y="56" width="20" height="76" rx="10"/>
-<g transform="rotate(-40 42 150)"><rect x="30" y="118" width="24" height="70" rx="12"/></g>
-<rect x="44" y="100" width="112" height="104" rx="44"/></g>
-<circle cx="84" cy="150" r="8" fill="#14213D"/><circle cx="120" cy="150" r="8" fill="#14213D"/>
-<circle cx="87" cy="147" r="3" fill="#fff"/><circle cx="123" cy="147" r="3" fill="#fff"/>
-<path d="M88 168 Q102 186 116 168" fill="none" stroke="#14213D" stroke-width="5" stroke-linecap="round"/>
-<circle cx="70" cy="168" r="8" fill="#FF8FA3" opacity=".75"/><circle cx="134" cy="168" r="8" fill="#FF8FA3" opacity=".75"/></svg>`;
+
+function mascotSVG(mood = "wave", extra = "") {
+  const baseFace = `
+    <circle cx="84" cy="150" r="8" fill="#14213D"/><circle cx="120" cy="150" r="8" fill="#14213D"/>
+    <circle cx="87" cy="147" r="3" fill="#fff"/><circle cx="123" cy="147" r="3" fill="#fff"/>
+    <path d="M88 168 Q102 186 116 168" fill="none" stroke="#14213D" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="70" cy="168" r="8" fill="#FF8FA3" opacity=".8"/><circle cx="134" cy="168" r="8" fill="#FF8FA3" opacity=".8"/>
+  `;
+
+  if (mood === "point") {
+    return `<svg class="mascot mascot-point ${extra}" viewBox="-10 -25 220 245" role="img" aria-label="Helping Hand pointing">
+      <path d="M58 14 L42 -4 M88 -5 L88 -22 M118 14 L134 -4" stroke="#14213D" stroke-width="5" stroke-linecap="round"/>
+      <g stroke="#14213D" stroke-width="5" stroke-linejoin="round" fill="#FFC83D">
+        <rect x="98" y="76" width="22" height="52" rx="11"/>
+        <rect x="118" y="82" width="22" height="46" rx="11"/>
+        <rect x="138" y="92" width="20" height="38" rx="10"/>
+        <rect x="76" y="2" width="24" height="128" rx="12"/>
+        <g transform="rotate(-38 42 150)"><rect x="30" y="118" width="24" height="70" rx="12"/></g>
+        <rect x="44" y="100" width="112" height="104" rx="44"/>
+      </g>
+      ${baseFace}
+    </svg>`;
+  }
+
+  if (mood === "think") {
+    return `<svg class="mascot mascot-think ${extra}" viewBox="-10 -30 230 250" role="img" aria-label="Helping Hand thinking">
+      <g stroke="#14213D" stroke-width="4.5" fill="#fff">
+        <circle cx="160" cy="46" r="6"/>
+        <circle cx="174" cy="30" r="10"/>
+        <ellipse cx="186" cy="2" rx="28" ry="18"/>
+      </g>
+      <g stroke="#14213D" stroke-width="5" stroke-linejoin="round" fill="#FFC83D">
+        <rect x="54" y="38" width="22" height="92" rx="11"/><rect x="78" y="22" width="22" height="108" rx="11"/>
+        <rect x="102" y="30" width="22" height="100" rx="11"/><rect x="126" y="56" width="20" height="76" rx="10"/>
+        <g transform="rotate(-40 42 150)"><rect x="30" y="118" width="24" height="70" rx="12"/></g>
+        <rect x="44" y="100" width="112" height="104" rx="44"/>
+      </g>
+      <circle cx="84" cy="146" r="8" fill="#14213D"/><circle cx="120" cy="146" r="8" fill="#14213D"/>
+      <circle cx="87" cy="143" r="3" fill="#fff"/><circle cx="123" cy="143" r="3" fill="#fff"/>
+      <path d="M92 168 Q102 178 112 168" fill="none" stroke="#14213D" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="70" cy="168" r="8" fill="#FF8FA3" opacity=".8"/><circle cx="134" cy="168" r="8" fill="#FF8FA3" opacity=".8"/>
+    </svg>`;
+  }
+
+  if (mood === "thumbsup") {
+    return `<svg class="mascot mascot-thumbsup ${extra}" viewBox="-15 -25 225 245" role="img" aria-label="Helping Hand thumbs up">
+      <path d="M38 10 L24 -4 M68 -2 L68 -18 M98 12 L112 -2" stroke="#14213D" stroke-width="5" stroke-linecap="round"/>
+      <g stroke="#14213D" stroke-width="5" stroke-linejoin="round" fill="#FFC83D">
+        <rect x="74" y="74" width="24" height="54" rx="12"/>
+        <rect x="96" y="78" width="24" height="50" rx="12"/>
+        <rect x="118" y="84" width="22" height="44" rx="11"/>
+        <rect x="138" y="92" width="20" height="38" rx="10"/>
+        <rect x="56" y="14" width="26" height="110" rx="13"/>
+        <rect x="44" y="100" width="114" height="104" rx="44"/>
+      </g>
+      <circle cx="84" cy="148" r="8" fill="#14213D"/><circle cx="120" cy="148" r="8" fill="#14213D"/>
+      <circle cx="87" cy="145" r="3" fill="#fff"/><circle cx="123" cy="145" r="3" fill="#fff"/>
+      <path d="M85 166 Q102 192 119 166" fill="none" stroke="#14213D" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="68" cy="166" r="8" fill="#FF8FA3" opacity=".85"/><circle cx="136" cy="166" r="8" fill="#FF8FA3" opacity=".85"/>
+    </svg>`;
+  }
+
+  // Default: Wave
+  return `<svg class="mascot mascot-wave ${extra}" viewBox="-10 -15 225 235" role="img" aria-label="Helping Hand mascot">
+    <path d="M174 38 C186 52 188 70 184 84" fill="none" stroke="#14213D" stroke-width="5" stroke-linecap="round"/>
+    <path d="M190 28 C206 48 208 72 202 96" fill="none" stroke="#14213D" stroke-width="5" stroke-linecap="round"/>
+    <g stroke="#14213D" stroke-width="5" stroke-linejoin="round" fill="#FFC83D">
+      <rect x="54" y="38" width="22" height="92" rx="11"/><rect x="78" y="22" width="22" height="108" rx="11"/>
+      <rect x="102" y="30" width="22" height="100" rx="11"/><rect x="126" y="56" width="20" height="76" rx="10"/>
+      <g transform="rotate(-40 42 150)"><rect x="30" y="118" width="24" height="70" rx="12"/></g>
+      <rect x="44" y="100" width="112" height="104" rx="44"/>
+    </g>
+    ${baseFace}
+  </svg>`;
+}
+
+const MASCOT = mascotSVG("wave");
 const ICON = {
   chev: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`,
   swap: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v16M4 16l4 4 4-4M16 20V4M12 8l4-4 4 4"/></svg>`,
@@ -73,17 +140,32 @@ function showWelcome(prefill) {
 }
 
 /* ---------- app shell ---------- */
+let headerMoodIdx = 0;
+const headerMoods = ["wave", "point", "think", "thumbsup"];
+const moodGreetings = [
+  "Hi! I'm waving hello! 👋",
+  "Point the way! Ready to guide you. ☝️",
+  "Hmm, thinking about your classes... 🤔",
+  "Thumbs up! You're doing great! 👍"
+];
+
 function showApp() {
   const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
   day = B.days[todayName] ? todayName : "Monday";
   askSub = me.subjects[0]; askQ = null; route = null; to = null; from = "entr"; floor = "g";
-  root.innerHTML = `<header class="top"><div class="in"><button class="mbtn wave" id="mas" aria-label="Wave hello">${MASCOT}</button>
+  headerMoodIdx = 0;
+  root.innerHTML = `<header class="top"><div class="in"><button class="mbtn" id="mas" aria-label="Tap the mascot to change moods">${mascotSVG("wave")}</button>
     <div class="hello"><h1>Hi, ${esc(me.name)}!</h1><p>${esc(B.name)}, semester ${B.semester}, group ${me.group}</p></div>
     <button class="ghost" id="edit">Edit profile</button></div></header>
     <div class="wrap"><nav class="tabs" role="tablist"><i class="ink"></i>
       <button role="tab" data-t="0" class="on">Find a place</button><button role="tab" data-t="1">My classes</button><button role="tab" data-t="2">Ask</button></nav>
     <main id="view"></main></div>`;
-  $("#mas").onclick = (e) => { const b = e.currentTarget; b.classList.remove("wave"); void b.offsetWidth; b.classList.add("wave"); };
+  $("#mas").onclick = (e) => {
+    headerMoodIdx = (headerMoodIdx + 1) % headerMoods.length;
+    const mood = headerMoods[headerMoodIdx];
+    e.currentTarget.innerHTML = mascotSVG(mood);
+    toast(moodGreetings[headerMoodIdx]);
+  };
   $("#edit").onclick = () => showWelcome(me);
   $(".tabs").onclick = (e) => { const b = e.target.closest("[data-t]"); if (b) tab(+b.dataset.t); };
   tab(0);
@@ -117,8 +199,21 @@ function fieldHTML(id, lab, pid) {
   return `<span class="lab" style="margin:0 0 6px">${lab}</span><button class="field ${p ? "" : "empty"}" id="${id}"><div class="txt">${p ? `<span>${esc(fName(p.f))}</span>` : ""}<b>${p ? esc(pName(p)) : "Choose a place"}</b></div>${ICON.chev}</button>`;
 }
 function viewFind(v) {
-  v.innerHTML = `<div class="card"><div id="f1"></div><div class="swapRow"><button class="swap" id="swap" aria-label="Swap start and destination">${ICON.swap}</button></div><div id="f2" style="margin-top:6px"></div>
-    <button class="btn primary" id="go">Show me the way</button></div><div id="result"></div>`;
+  v.innerHTML = `
+    <div class="companion-card in">
+      <div class="companion-mascot">${mascotSVG("point")}</div>
+      <div class="companion-text">
+        <b>Where to next? The hand points the way!</b>
+        <p>Pick your starting point and destination. Cross-floor routes prioritize the <b>Lift</b>.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div id="f1"></div>
+      <div class="swapRow"><button class="swap" id="swap" aria-label="Swap start and destination">${ICON.swap}</button></div>
+      <div id="f2" style="margin-top:6px"></div>
+      <button class="btn primary" id="go">Show me the way</button>
+    </div>
+    <div id="result"></div>`;
   const paint = () => { $("#f1").innerHTML = fieldHTML("fromBtn", "Where are you?", from); $("#f2").innerHTML = fieldHTML("toBtn", "Where do you want to go?", to);
     $("#fromBtn").onclick = () => openPicker("Where are you?", from, (id) => { from = id; paint(); });
     $("#toBtn").onclick = () => openPicker("Where do you want to go?", to, (id) => { to = id; paint(); }); };
@@ -139,21 +234,45 @@ async function go() {
 }
 function renderResult() {
   const fl = new Set(route.path.map((id) => N[id].f));
+  const hasLift = route.steps.some((s) => s.type === "lift");
   const legend = `<div class="map-legend">
     <span><i class="leg-from"></i>Start</span>
     <span><i class="leg-to"></i>Destination</span>
     <span><i class="leg-route"></i>Route</span>
     <span><i class="leg-lift"></i>Lift / slope</span>
   </div>`;
+  const liftBanner = hasLift ? `
+    <div class="companion-card" style="background:#F3EFFF; border-color:#D8B4FE; margin-bottom:12px;">
+      <div class="companion-mascot">${mascotSVG("point")}</div>
+      <div class="companion-text">
+        <b style="color:#4C1D95;">🛗 Lift Route Included</b>
+        <p style="color:#6B21A8;">Your route takes the lift directly between 1st floor (ground) and 2nd floor.</p>
+      </div>
+    </div>` : "";
+
   $("#result").innerHTML = `<div class="card in">
     <div class="sum"><b>${esc(route.time)}</b><span>${esc(route.from)} → ${esc(route.to)}</span></div>
+    ${liftBanner}
     ${route.friendly ? `<div class="bubble">${esc(route.friendly)}</div>` : ""}
     <div class="seg" id="floors">${C.floors.map((f) => `<button data-f="${f.id}" class="${f.id === floor ? "on" : ""}">${esc(f.name)}${fl.has(f.id) ? '<i class="dot" title="Route passes through this floor"></i>' : ""}</button>`).join("")}</div>
     <div class="mapbox" id="mapbox">${mapSVG(floor)}</div>
     ${legend}
     <p class="note" id="mnote">${esc(C.floors.find((f) => f.id === floor).note)}</p>
-    <ol class="steps">${route.steps.map((s, i) => `<li class="${s.type}" style="animation-delay:${i * 90}ms">${esc(s.text)}</li>`).join("")}</ol>
+    <ol class="steps">${route.steps.map((s, i) => `<li class="${s.type}" style="animation-delay:${i * 90}ms">${s.type === "lift" ? '<span class="lift-tag">🛗 Lift</span> ' : ""}${esc(s.text)}</li>`).join("")}</ol>
+    <div class="arrived-box" id="arriveBox">
+      <button class="btn" id="arriveBtn" style="margin-top:0; background:var(--mint); color:#fff; box-shadow:0 4px 0 #0b8075;">🎯 I Have Arrived!</button>
+    </div>
   </div>`;
+
+  $("#arriveBtn").onclick = () => {
+    $("#arriveBox").innerHTML = `
+      <div class="arrived-mascot">${mascotSVG("thumbsup")}</div>
+      <h3>You have arrived! 🎉</h3>
+      <p>Thumbs up! Have a great lecture or session at <b>${esc(route.to)}</b>.</p>
+    `;
+    toast("Thumbs up on arrival! 👍");
+  };
+
   $("#floors").onclick = (e) => {
     const b = e.target.closest("[data-f]"); if (!b) return; floor = b.dataset.f;
     $$("#floors button").forEach((x) => x.classList.toggle("on", x === b));
@@ -238,7 +357,15 @@ function viewClasses(v) {
       <p>${esc(s.name)}${s.code ? `, ${esc(s.code)}` : ""}</p><p>${esc(s.teacher || "Coordinator activity")}, ${esc(s.venue)}</p>
       ${s.where ? `<button class="go" data-w="${s.where}">Take me there</button>` : ""}</div></div>`;
   });
-  v.innerHTML = `<div class="card"><div class="days" id="days">${Object.keys(B.days).map((d) => `<button class="chip ${d === day ? "on" : ""}" data-d="${d}">${d.slice(0, 3)}${d === todayName ? '<i class="today"></i>' : ""}</button>`).join("")}</div>
+  v.innerHTML = `
+    <div class="companion-card in">
+      <div class="companion-mascot">${mascotSVG("wave")}</div>
+      <div class="companion-text">
+        <b>Your Weekly Classes & Labs</b>
+        <p>Filtered to Group ${me.group}. Tap "Take me there" on any subject to navigate straight to the classroom!</p>
+      </div>
+    </div>
+    <div class="card"><div class="days" id="days">${Object.keys(B.days).map((d) => `<button class="chip ${d === day ? "on" : ""}" data-d="${d}">${d.slice(0, 3)}${d === todayName ? '<i class="today"></i>' : ""}</button>`).join("")}</div>
     ${html || '<p class="hint">No classes on this day.</p>'}</div>
     <div class="card"><h2>Your subjects</h2>${me.subjects.map((id) => { const s = subj(id); return `<div class="subj"><h3>${esc(s.name)}</h3><p>${esc(s.code)}, ${esc(s.teacher)}</p><p>${esc(s.type)}, ${/^\d/.test(s.credits) ? esc(s.credits) + " credits" : "no credits"}, ${esc(s.marks)}</p></div>`; }).join("")}</div>`;
   $("#days").onclick = (e) => { const b = e.target.closest("[data-d]"); if (b) { day = b.dataset.d; viewClasses(v); } };
@@ -247,15 +374,42 @@ function viewClasses(v) {
 
 /* ---------- ask ---------- */
 function viewAsk(v) {
-  v.innerHTML = `<div class="card"><div class="lab">Which subject?</div><div class="chips" id="as">${me.subjects.map((id) => `<button class="chip ${id === askSub ? "on" : ""}" data-s="${id}">${esc(subj(id).short)}</button>`).join("")}</div>
+  v.innerHTML = `
+    <div class="companion-card in">
+      <div class="companion-mascot">${mascotSVG("think")}</div>
+      <div class="companion-text">
+        <b>Academic Doubts? Helping Hand knows!</b>
+        <p>Ask about faculty, timetables, venues, credits and schemes for your branch.</p>
+      </div>
+    </div>
+    <div class="card"><div class="lab">Which subject?</div><div class="chips" id="as">${me.subjects.map((id) => `<button class="chip ${id === askSub ? "on" : ""}" data-s="${id}">${esc(subj(id).short)}</button>`).join("")}</div>
     <div class="lab">What do you want to know?</div><div class="chips" id="aq">${A.questions.map((q) => `<button class="chip ${q.id === askQ ? "on" : ""}" data-q="${q.id}">${esc(q.t)}</button>`).join("")}</div>
     <button class="btn primary" id="ask">Ask Helping Hand</button><div id="ans"></div></div>`;
   const pickOne = (sel, attr, set) => ($(sel).onclick = (e) => { const b = e.target.closest(`[data-${attr}]`); if (!b) return; set(b.dataset[attr]); $$(`${sel} .chip`).forEach((c) => c.classList.toggle("on", c === b)); });
   pickOne("#as", "s", (x) => (askSub = x)); pickOne("#aq", "q", (x) => (askQ = x));
   $("#ask").onclick = async () => {
     if (!askQ) { shake($("#aq")); return toast("Choose what you want to know."); }
-    const b = $("#ask"); b.classList.add("busy"); $("#ans").innerHTML = `<div class="ans typing"><i></i><i></i><i></i></div>`;
-    try { const d = await api("/api/ask", { branch: BRANCH, subject: askSub, question: askQ, group: me.group }); $("#ans").innerHTML = `<div class="ans">${esc(d.answer)}</div>`; }
+    const b = $("#ask"); b.classList.add("busy");
+    $("#ans").innerHTML = `
+      <div class="companion-card in" style="margin-top:14px; background:#F0FDFA; border-color:#99F6E4;">
+        <div class="companion-mascot">${mascotSVG("think")}</div>
+        <div class="companion-text">
+          <b style="color:#0F766E;">Helping Hand is thinking...</b>
+          <p style="color:#115E59;">Checking academic records and timetable.</p>
+          <div class="typing" style="margin-top:6px;"><i></i><i></i><i></i></div>
+        </div>
+      </div>`;
+    try {
+      const d = await api("/api/ask", { branch: BRANCH, subject: askSub, question: askQ, group: me.group });
+      $("#ans").innerHTML = `
+        <div class="ans">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <div style="width:34px; height:34px; flex:none;">${mascotSVG("point")}</div>
+            <b style="color:var(--mint); font-size:14px;">Helping Hand says:</b>
+          </div>
+          ${esc(d.answer)}
+        </div>`;
+    }
     catch (e) { $("#ans").innerHTML = `<div class="ans err">${esc(e.message)}</div>`; }
     b.classList.remove("busy");
   };
