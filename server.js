@@ -14,7 +14,7 @@ const read = (f) => JSON.parse(fs.readFileSync(`data/${f}`, "utf8"));
 const campus = read("campus.json");
 const academics = read("academics.json");
 const graph = buildGraph(campus);
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
 // Campus events / noticeboard data
