@@ -85,7 +85,9 @@ const ICON = {
   bell: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
   bellOn: `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
   speak: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`,
-  stop: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`
+  stop: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`,
+  star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  starOn: `<svg viewBox="0 0 24 24" fill="#FFC83D" stroke="#D9A21C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`
 };
 
 let C, A, B, N = {}, me = null, EVENTS = [];
@@ -99,8 +101,45 @@ const api = async (url, body) => {
   return d;
 };
 
-const save = () => { try { localStorage.setItem("hh_me", JSON.stringify(me)); } catch {} };
-const load = () => { try { return JSON.parse(localStorage.getItem("hh_me")); } catch { return null; } };
+// User Profile & Registry Storage
+const getUsers = () => {
+  try {
+    return JSON.parse(localStorage.getItem("hh_users")) || {};
+  } catch {
+    return {};
+  }
+};
+
+const saveUsers = (users) => {
+  try {
+    localStorage.setItem("hh_users", JSON.stringify(users));
+  } catch {}
+};
+
+const saveMe = (user) => {
+  me = user;
+  if (!me.interested) me.interested = { classes: [], events: [] };
+  if (!me.reminders) me.reminders = [];
+  try {
+    localStorage.setItem("hh_me", JSON.stringify(me));
+    if (me.username) {
+      const users = getUsers();
+      users[me.username.toLowerCase()] = me;
+      saveUsers(users);
+    }
+  } catch {}
+};
+
+const loadMe = () => {
+  try {
+    const data = JSON.parse(localStorage.getItem("hh_me"));
+    if (data && !data.interested) data.interested = { classes: [], events: [] };
+    if (data && !data.reminders) data.reminders = [];
+    return data;
+  } catch {
+    return null;
+  }
+};
 
 let toastT;
 function toast(msg) {
@@ -117,7 +156,7 @@ function shake(el) {
   el.classList.add("shake");
 }
 
-const subj = (id) => B.subjects.find((s) => s.id === id) || { short: id, name: id, type: "Course", teacher: "Faculty", venue: "Classroom" };
+const subj = (id) => B.subjects.find((s) => s.id === id) || { id, short: id, name: id, type: "Course", teacher: "Faculty", venue: "Classroom" };
 const pName = (p) => p.n + (p.s ? ` (${p.s})` : "");
 const fName = (id) => C.floors.find((f) => f.id === id)?.name || id;
 
@@ -201,8 +240,7 @@ async function setupReminder(itemTitle, timeNotice) {
   }
   if (Notification.permission === "granted") {
     new Notification("Helping Hand Reminder 🔔", {
-      body: `Reminder set: ${itemTitle} (${timeNotice})`,
-      icon: "favicon.ico"
+      body: `Reminder set: ${itemTitle} (${timeNotice})`
     });
     toast(`Alert enabled for ${itemTitle}!`);
   } else if (Notification.permission !== "denied") {
@@ -238,79 +276,169 @@ async function init() {
   for (const p of C.places) if (p.n) N[p.id] = { ...p, cx: p.x + p.w / 2, cy: p.y + p.h / 2 };
   for (const j of C.junctions) N[j.id] = { ...j, cx: j.x, cy: j.y };
 
-  me = load();
+  me = loadMe();
   if (me && me.name && me.branch && A.branches[me.branch]) {
+    // If username missing on older sessions, synthesize it
+    if (!me.username) {
+      me.username = me.name.toLowerCase().replace(/\s+/g, "");
+      saveMe(me);
+    }
     B = A.branches[me.branch];
     showApp();
   } else {
-    showWelcome();
+    const existingUsers = Object.keys(getUsers());
+    showWelcome(existingUsers.length > 0 ? "login" : "signup");
   }
 }
 
-/* ---------- Welcome / Profile Screen ---------- */
-function showWelcome(prefill) {
+/* ---------- Welcome / Login & Sign Up Screen ---------- */
+function showWelcome(initialMode = "login") {
+  let authMode = initialMode; // "login" | "signup"
+  const users = getUsers();
   const branchKeys = Object.keys(A.branches);
-  const activeBranchKey = (prefill && prefill.branch && A.branches[prefill.branch]) ? prefill.branch : branchKeys[0];
-  let currentB = A.branches[activeBranchKey];
+  let chosenBranch = branchKeys[0];
+  let currentB = A.branches[chosenBranch];
+  let chosenGroup = 1;
+  let selSubjects = new Set(currentB.subjects.filter((s) => !s.extra).map((s) => s.id));
 
-  const pick = prefill || {
-    name: "",
-    password: "",
-    branch: activeBranchKey,
-    group: 1,
-    subjects: currentB.subjects.filter((s) => !s.extra).map((s) => s.id),
-    reminders: []
-  };
-
-  let chosenBranch = pick.branch;
-  let chosenGroup = pick.group || 1;
-  let selSubjects = new Set(pick.subjects);
-
-  function renderWelcome() {
+  function render() {
     currentB = A.branches[chosenBranch];
-    root.innerHTML = `<div class="wrap"><section class="card welcome in wave">
-      <div class="mascot-lg">${MASCOT}</div>
-      <h1>Hi, I'm Helping Hand!</h1>
-      <p>Your AI guide for AITD Kanpur. Set up your profile to personalize routes, timetables, and alerts.</p>
-      
-      <div class="auth-box">
-        <label for="nm">Your Name</label>
-        <input id="nm" type="text" maxlength="30" autocomplete="given-name" placeholder="e.g. Shivam / Aarav" value="${esc(pick.name)}">
-        
-        <label for="pwd" style="margin-top:12px">Passcode (optional)</label>
-        <input id="pwd" type="password" maxlength="20" placeholder="Set a 4-digit PIN or password" value="${esc(pick.password || "")}">
-      </div>
+    const userList = Object.values(users);
 
-      <div class="lab">Select Your Branch (All 7 Sections)</div>
-      <div class="chips" id="brPicker">
-        ${branchKeys.map((k) => `<button class="chip ${k === chosenBranch ? "on" : ""}" data-b="${k}" aria-pressed="${k === chosenBranch}">${esc(A.branches[k].name)}</button>`).join("")}
-      </div>
-      <p class="hint">Section: <b>${esc(currentB.section)}</b> · Classroom: <b>${esc(currentB.classroom)}</b></p>
+    root.innerHTML = `
+      <div class="wrap">
+        <section class="card welcome in wave">
+          <div class="mascot-lg">${MASCOT}</div>
+          
+          <div class="auth-toggle">
+            <button class="auth-toggle-btn ${authMode === "login" ? "on" : ""}" id="btnModeLogin">Sign In / Log In</button>
+            <button class="auth-toggle-btn ${authMode === "signup" ? "on" : ""}" id="btnModeSignup">New Student / Sign Up</button>
+          </div>
 
-      <div class="lab">Your Lab Group</div>
-      <div class="chips" id="gr">
-        ${currentB.groups.map((g) => `<button class="chip ${g === chosenGroup ? "on" : ""}" data-g="${g}" aria-pressed="${g === chosenGroup}">Group ${g}</button>`).join("")}
-      </div>
+          ${authMode === "login" ? `
+            <h1>Welcome Back!</h1>
+            <p>Log in with your username to restore your branch, timetable, and starred items.</p>
+            
+            ${userList.length > 0 ? `
+              <div class="quick-profiles-box">
+                <span class="quick-profiles-label">Saved profiles on this device:</span>
+                <div class="chips" id="quickChips">
+                  ${userList.map((u) => `
+                    <button class="chip" data-quick="${esc(u.username)}">
+                      👤 <b>${esc(u.name)}</b> <small>(${esc(u.branch ? u.branch.toUpperCase() : "CS")})</small>
+                    </button>
+                  `).join("")}
+                </div>
+              </div>
+            ` : ""}
 
-      <div class="lab">Your Registered Subjects</div>
-      <div class="chips" id="sb">
-        ${currentB.subjects.filter((s) => !s.extra).map((s) => `<button class="chip ${selSubjects.has(s.id) ? "on" : ""}" data-s="${s.id}" aria-pressed="${selSubjects.has(s.id)}">${esc(s.short)}</button>`).join("")}
-      </div>
-      <p class="hint">Tap any subject chip to include or exclude it from your schedule.</p>
+            <div class="auth-box">
+              <label for="loginUser">Username</label>
+              <input id="loginUser" type="text" autocomplete="username" placeholder="e.g. shivam" value="${esc(userList[0]?.username || "")}">
 
-      <button class="btn primary" id="start">Save & Start Exploring 🚀</button>
-    </section></div>`;
+              <label for="loginPass" style="margin-top:12px">Passcode (if set)</label>
+              <input id="loginPass" type="password" autocomplete="current-password" placeholder="Passcode (leave blank if none)">
+            </div>
 
-    $("#brPicker").onclick = (e) => {
+            <button class="btn primary" id="doLogin">Log In ➔</button>
+            <p class="hint" style="text-align:center; margin-top:14px;">
+              First time here? <a href="#" id="toSignup" class="auth-link">Create a student profile</a>
+            </p>
+          ` : `
+            <h1>Create Student Profile</h1>
+            <p>Pick your branch and subjects once. Your schedule is saved permanently for 1-click logins.</p>
+
+            <div class="auth-box">
+              <label for="nm">Your Full Name</label>
+              <input id="nm" type="text" autocomplete="name" placeholder="e.g. Shivam Roy">
+
+              <label for="usr" style="margin-top:12px">Choose a Username</label>
+              <input id="usr" type="text" autocomplete="username" placeholder="e.g. shivam (used to log in)">
+
+              <label for="pwd" style="margin-top:12px">Passcode (optional)</label>
+              <input id="pwd" type="password" autocomplete="new-password" placeholder="Set a 4-digit PIN or password">
+            </div>
+
+            <div class="lab">Select Your Branch (All 7 Sections)</div>
+            <div class="chips" id="brPicker">
+              ${branchKeys.map((k) => `<button class="chip ${k === chosenBranch ? "on" : ""}" data-b="${k}" aria-pressed="${k === chosenBranch}">${esc(A.branches[k].name)}</button>`).join("")}
+            </div>
+            <p class="hint">Section: <b>${esc(currentB.section)}</b> · Classroom: <b>${esc(currentB.classroom)}</b></p>
+
+            <div class="lab">Your Lab Group</div>
+            <div class="chips" id="gr">
+              ${currentB.groups.map((g) => `<button class="chip ${g === chosenGroup ? "on" : ""}" data-g="${g}" aria-pressed="${g === chosenGroup}">Group ${g}</button>`).join("")}
+            </div>
+
+            <div class="lab">Your Registered Subjects</div>
+            <div class="chips" id="sb">
+              ${currentB.subjects.filter((s) => !s.extra).map((s) => `<button class="chip ${selSubjects.has(s.id) ? "on" : ""}" data-s="${s.id}" aria-pressed="${selSubjects.has(s.id)}">${esc(s.short)}</button>`).join("")}
+            </div>
+            <p class="hint">Tap any subject chip to include or exclude it from your schedule.</p>
+
+            <button class="btn primary" id="doSignup">Create Account & Start Exploring 🚀</button>
+            <p class="hint" style="text-align:center; margin-top:14px;">
+              Already registered? <a href="#" id="toLogin" class="auth-link">Sign In instead</a>
+            </p>
+          `}
+        </section>
+      </div>`;
+
+    // Mode toggles
+    $("#btnModeLogin")?.addEventListener("click", () => { authMode = "login"; render(); });
+    $("#btnModeSignup")?.addEventListener("click", () => { authMode = "signup"; render(); });
+    $("#toSignup")?.addEventListener("click", (e) => { e.preventDefault(); authMode = "signup"; render(); });
+    $("#toLogin")?.addEventListener("click", (e) => { e.preventDefault(); authMode = "login"; render(); });
+
+    // Quick chip autofill
+    $("#quickChips")?.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-quick]");
+      if (!b) return;
+      const u = b.dataset.quick;
+      const input = $("#loginUser");
+      if (input) {
+        input.value = u;
+        $("#loginPass")?.focus();
+      }
+    });
+
+    // Login Action
+    $("#doLogin")?.addEventListener("click", () => {
+      const uInput = $("#loginUser")?.value.trim().toLowerCase();
+      const pInput = $("#loginPass")?.value.trim();
+      if (!uInput) {
+        shake($("#loginUser"));
+        return toast("Please enter your username.");
+      }
+      const existing = users[uInput];
+      if (!existing) {
+        shake($("#loginUser"));
+        return toast("Username not found. Switch to 'Sign Up' to create your account!");
+      }
+      if (existing.password && existing.password !== pInput) {
+        shake($("#loginPass"));
+        return toast("Incorrect passcode. Please try again.");
+      }
+      saveMe(existing);
+      B = A.branches[me.branch];
+      toast(`Welcome back, ${me.name}! 👋`);
+      showApp();
+    });
+
+    $("#loginUser")?.addEventListener("keydown", (e) => { if (e.key === "Enter") $("#doLogin")?.click(); });
+    $("#loginPass")?.addEventListener("keydown", (e) => { if (e.key === "Enter") $("#doLogin")?.click(); });
+
+    // Sign Up Branch/Group/Subject handlers
+    $("#brPicker")?.addEventListener("click", (e) => {
       const b = e.target.closest("[data-b]");
       if (!b) return;
       chosenBranch = b.dataset.b;
       currentB = A.branches[chosenBranch];
       selSubjects = new Set(currentB.subjects.filter((s) => !s.extra).map((s) => s.id));
-      renderWelcome();
-    };
+      render();
+    });
 
-    $("#gr").onclick = (e) => {
+    $("#gr")?.addEventListener("click", (e) => {
       const b = e.target.closest("[data-g]");
       if (!b) return;
       chosenGroup = +b.dataset.g;
@@ -319,46 +447,173 @@ function showWelcome(prefill) {
         c.classList.toggle("on", on);
         c.setAttribute("aria-pressed", on);
       });
-    };
+    });
 
-    $("#sb").onclick = (e) => {
+    $("#sb")?.addEventListener("click", (e) => {
       const b = e.target.closest("[data-s]");
       if (!b) return;
       const id = b.dataset.s;
       selSubjects.has(id) ? selSubjects.delete(id) : selSubjects.add(id);
       b.classList.toggle("on", selSubjects.has(id));
       b.setAttribute("aria-pressed", selSubjects.has(id));
-    };
+    });
 
-    $("#start").onclick = () => {
-      const name = $("#nm").value.trim();
-      const password = $("#pwd") ? $("#pwd").value.trim() : "";
+    // Sign Up Action
+    $("#doSignup")?.addEventListener("click", () => {
+      const name = $("#nm")?.value.trim();
+      let username = $("#usr")?.value.trim().toLowerCase();
+      const password = $("#pwd")?.value.trim() || "";
+
       if (!name) {
         shake($("#nm"));
-        $("#nm").focus();
-        return toast("Please enter your name.");
+        $("#nm")?.focus();
+        return toast("Please enter your full name.");
+      }
+      if (!username) {
+        username = name.toLowerCase().replace(/\s+/g, "");
       }
       if (!selSubjects.size) {
         return toast("Keep at least one subject selected.");
       }
-      me = {
+
+      const newProfile = {
+        username,
         name,
         password,
         branch: chosenBranch,
         group: chosenGroup,
         subjects: [...selSubjects],
-        reminders: (pick && pick.reminders) || []
+        reminders: [],
+        interested: { classes: [], events: [] }
       };
-      B = A.branches[chosenBranch];
-      save();
-      toast(`Welcome aboard, ${name}!`);
-      showApp();
-    };
 
-    $("#nm").onkeydown = (e) => { if (e.key === "Enter") $("#start").click(); };
+      saveMe(newProfile);
+      B = A.branches[chosenBranch];
+      toast(`Account created for ${name}! 🚀`);
+      showApp();
+    });
+
+    $("#nm")?.addEventListener("keydown", (e) => { if (e.key === "Enter") $("#doSignup")?.click(); });
   }
 
-  renderWelcome();
+  render();
+}
+
+/* ---------- Edit Profile Modal ---------- */
+function showEditProfile() {
+  const opener = document.activeElement;
+  const el = document.createElement("div");
+  el.className = "sheet-wrap";
+  
+  const branchKeys = Object.keys(A.branches);
+  let editBranch = me.branch;
+  let editGroup = me.group;
+  let currentB = A.branches[editBranch];
+  let editSubjects = new Set(me.subjects);
+
+  function renderSheet() {
+    currentB = A.branches[editBranch];
+    el.innerHTML = `
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="Edit Profile">
+        <div class="grab"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h2>Student Profile</h2>
+          <button class="btn-logout" id="doLogout">🚪 Log Out</button>
+        </div>
+        <p class="hint">Logged in as <b>@${esc(me.username || "student")}</b>. Update your details below:</p>
+
+        <div class="auth-box">
+          <label for="editName">Full Name</label>
+          <input id="editName" type="text" value="${esc(me.name)}">
+
+          <label for="editPass" style="margin-top:12px">Passcode</label>
+          <input id="editPass" type="password" placeholder="Passcode (optional)" value="${esc(me.password || "")}">
+        </div>
+
+        <div class="lab">Branch (All 7 Sections)</div>
+        <div class="chips" id="editBrPicker">
+          ${branchKeys.map((k) => `<button class="chip ${k === editBranch ? "on" : ""}" data-b="${k}">${esc(A.branches[k].name)}</button>`).join("")}
+        </div>
+        <p class="hint">Section: <b>${esc(currentB.section)}</b> · Classroom: <b>${esc(currentB.classroom)}</b></p>
+
+        <div class="lab">Lab Group</div>
+        <div class="chips" id="editGr">
+          ${currentB.groups.map((g) => `<button class="chip ${g === editGroup ? "on" : ""}" data-g="${g}">Group ${g}</button>`).join("")}
+        </div>
+
+        <div class="lab">Enrolled Subjects</div>
+        <div class="chips" id="editSb">
+          ${currentB.subjects.filter((s) => !s.extra).map((s) => `<button class="chip ${editSubjects.has(s.id) ? "on" : ""}" data-s="${s.id}">${esc(s.short)}</button>`).join("")}
+        </div>
+
+        <button class="btn primary" id="saveProfile" style="margin-top:20px;">Save Changes ✨</button>
+      </div>`;
+
+    $("#editBrPicker", el).onclick = (e) => {
+      const b = e.target.closest("[data-b]");
+      if (!b) return;
+      editBranch = b.dataset.b;
+      currentB = A.branches[editBranch];
+      editSubjects = new Set(currentB.subjects.filter((s) => !s.extra).map((s) => s.id));
+      renderSheet();
+    };
+
+    $("#editGr", el).onclick = (e) => {
+      const b = e.target.closest("[data-g]");
+      if (!b) return;
+      editGroup = +b.dataset.g;
+      $$("#editGr .chip", el).forEach((c) => c.classList.toggle("on", c === b));
+    };
+
+    $("#editSb", el).onclick = (e) => {
+      const b = e.target.closest("[data-s]");
+      if (!b) return;
+      const id = b.dataset.s;
+      editSubjects.has(id) ? editSubjects.delete(id) : editSubjects.add(id);
+      b.classList.toggle("on", editSubjects.has(id));
+    };
+
+    $("#doLogout", el).onclick = () => {
+      localStorage.removeItem("hh_me");
+      me = null;
+      close();
+      toast("Logged out successfully! 👋");
+      showWelcome("login");
+    };
+
+    $("#saveProfile", el).onclick = () => {
+      const newName = $("#editName", el).value.trim();
+      const newPass = $("#editPass", el).value.trim();
+      if (!newName) return toast("Name cannot be blank.");
+      if (!editSubjects.size) return toast("Select at least one subject.");
+
+      me.name = newName;
+      me.password = newPass;
+      me.branch = editBranch;
+      me.group = editGroup;
+      me.subjects = [...editSubjects];
+      B = A.branches[editBranch];
+      saveMe(me);
+      toast("Profile updated! ✨");
+      close();
+      showApp();
+    };
+  }
+
+  document.body.append(el);
+  renderSheet();
+
+  const close = () => {
+    document.removeEventListener("keydown", key);
+    el.classList.add("out");
+    setTimeout(() => {
+      el.remove();
+      opener?.focus?.();
+    }, 200);
+  };
+  const key = (e) => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", key);
+  el.onclick = (e) => { if (e.target === el) close(); };
 }
 
 /* ---------- App Shell ---------- */
@@ -472,6 +727,8 @@ function showApp() {
     </div>
   `;
 
+  const starCount = (me.interested?.classes?.length || 0) + (me.interested?.events?.length || 0);
+
   root.innerHTML = `
     <header class="top">
       <div class="in">
@@ -493,6 +750,7 @@ function showApp() {
         <button role="tab" data-t="1">My classes</button>
         <button role="tab" data-t="2">Ask</button>
         <button role="tab" data-t="3">Noticeboard</button>
+        <button role="tab" data-t="4">Interested ${starCount > 0 ? `<span class="badge-tab">${starCount}</span>` : ""}</button>
       </nav>
       <main id="view"></main>
     </div>`;
@@ -512,7 +770,7 @@ function showApp() {
     toast(moodGreetings[headerMoodIdx]);
   };
 
-  $("#edit").onclick = () => showWelcome(me);
+  $("#edit").onclick = () => showEditProfile();
   $(".tabs").onclick = (e) => {
     const b = e.target.closest("[data-t]");
     if (b) tab(+b.dataset.t);
@@ -523,7 +781,7 @@ function showApp() {
 
 function tab(i) {
   const tabs = $$(".tabs button");
-  const count = tabs.length || 4;
+  const count = tabs.length || 5;
   tabs.forEach((b, k) => {
     b.classList.toggle("on", k === i);
     b.setAttribute("aria-selected", k === i);
@@ -536,7 +794,7 @@ function tab(i) {
   const v = $("#view");
   v.className = "panel";
   void v.offsetWidth;
-  [viewFind, viewClasses, viewAsk, viewNoticeboard][i](v);
+  [viewFind, viewClasses, viewAsk, viewNoticeboard, viewInterested][i](v);
 }
 
 /* ---------- Instant Search Picker Sheet ---------- */
@@ -680,7 +938,7 @@ function viewFind(v) {
     if (nearest) {
       to = nearest;
       paint();
-      toast(`Found nearest water cooler: ${pName(N[nearest])}! 💧`);
+      toast(`Routing to nearest water cooler: ${pName(N[nearest])}! 💧`);
       go();
     }
   };
@@ -691,7 +949,7 @@ function viewFind(v) {
     if (nearest) {
       to = nearest;
       paint();
-      toast(`Found nearest washroom: ${pName(N[nearest])}! 🚻`);
+      toast(`Routing to nearest washroom: ${pName(N[nearest])}! 🚻`);
       go();
     }
   };
@@ -918,6 +1176,7 @@ function viewClasses(v) {
     const s = subj(id), [a, b] = slotTimes(p, span);
     const remKey = `${day}_${p}_${id}`;
     const hasRem = (me.reminders || []).includes(remKey);
+    const isInterested = (me.interested?.classes || []).includes(s.id);
 
     html += `
       <div class="slot" style="animation-delay:${i * 60}ms">
@@ -925,9 +1184,14 @@ function viewClasses(v) {
         <div class="b">
           <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <h3>${esc(s.short)}${s.type.startsWith("Lab") ? '<span class="tag">Lab</span>' : ""}</h3>
-            <button class="btn-remind ${hasRem ? "on" : ""}" data-rem="${remKey}" data-title="${esc(s.short)}" data-time="${a}" title="${hasRem ? "Remove alert" : "Set alert 10m before"}">
-              ${hasRem ? ICON.bellOn : ICON.bell}
-            </button>
+            <div class="slot-actions">
+              <button class="btn-star ${isInterested ? "on" : ""}" data-starcls="${s.id}" data-stitle="${esc(s.short)}" title="${isInterested ? "Remove from Interested" : "Add to Interested"}">
+                ${isInterested ? ICON.starOn : ICON.star}
+              </button>
+              <button class="btn-remind ${hasRem ? "on" : ""}" data-rem="${remKey}" data-title="${esc(s.short)}" data-time="${a}" title="${hasRem ? "Remove alert" : "Set alert 10m before"}">
+                ${hasRem ? ICON.bellOn : ICON.bell}
+              </button>
+            </div>
           </div>
           <p>${esc(s.name)}${s.code ? `, ${esc(s.code)}` : ""}</p>
           <p>${esc(s.teacher || "Coordinator activity")}, ${esc(s.venue)}</p>
@@ -977,7 +1241,7 @@ function viewClasses(v) {
       <div class="companion-mascot">${mascotSVG("wave")}</div>
       <div class="companion-text">
         <b>Weekly Schedule · ${esc(B.name)} (Sec ${esc(B.section)})</b>
-        <p>Filtered for <b>Group ${me.group}</b>. Tap the bell icon on any lecture to toggle class reminders!</p>
+        <p>Filtered for <b>Group ${me.group}</b>. Tap ⭐ to add classes to your Interested list, or 🔔 for alerts!</p>
       </div>
     </div>
 
@@ -1009,6 +1273,28 @@ function viewClasses(v) {
   };
 
   v.onclick = (e) => {
+    // Star/Interest on Class
+    const starBtn = e.target.closest("[data-starcls]");
+    if (starBtn) {
+      const sId = starBtn.dataset.starcls;
+      const sTitle = starBtn.dataset.stitle;
+      me.interested = me.interested || { classes: [], events: [] };
+      if (me.interested.classes.includes(sId)) {
+        me.interested.classes = me.interested.classes.filter(x => x !== sId);
+        starBtn.classList.remove("on");
+        starBtn.innerHTML = ICON.star;
+        toast(`Removed ${sTitle} from Interested.`);
+      } else {
+        me.interested.classes.push(sId);
+        starBtn.classList.add("on");
+        starBtn.innerHTML = ICON.starOn;
+        toast(`Added ${sTitle} to your Interested classes! ⭐`);
+      }
+      saveMe(me);
+      return;
+    }
+
+    // Reminder toggle
     const remBtn = e.target.closest("[data-rem]");
     if (remBtn) {
       const key = remBtn.dataset.rem;
@@ -1026,7 +1312,7 @@ function viewClasses(v) {
         remBtn.innerHTML = ICON.bellOn;
         setupReminder(title, `${day} at ${time}`);
       }
-      save();
+      saveMe(me);
       return;
     }
 
@@ -1046,7 +1332,7 @@ function viewNoticeboard(v) {
       <div class="companion-mascot">${mascotSVG("point")}</div>
       <div class="companion-text">
         <b>Campus Noticeboard & Events</b>
-        <p>Stay updated on upcoming hackathons, workshops, and lab assignment deadlines at AITD Kanpur.</p>
+        <p>Stay updated on upcoming hackathons, workshops, and lab deadlines. Tap ⭐ to save them to your Interested hub!</p>
       </div>
     </div>
 
@@ -1055,13 +1341,19 @@ function viewNoticeboard(v) {
       <div class="notice-list" style="margin-top:14px;">
         ${EVENTS.map((ev) => {
           const isRem = (me.reminders || []).includes(ev.id);
+          const isInterested = (me.interested?.events || []).includes(ev.id);
           return `
             <div class="notice-card in">
               <div class="notice-header">
                 <span class="notice-tag tag-${ev.badge.toLowerCase().replace(/\s+/g, '-')}">${esc(ev.badge)}</span>
-                <button class="btn-remind ${isRem ? "on" : ""}" data-evrem="${ev.id}" data-evtitle="${esc(ev.title)}">
-                  ${isRem ? ICON.bellOn : ICON.bell}
-                </button>
+                <div class="slot-actions">
+                  <button class="btn-star ${isInterested ? "on" : ""}" data-starev="${ev.id}" data-stitle="${esc(ev.title)}" title="${isInterested ? "Remove from Interested" : "Mark as Interested"}">
+                    ${isInterested ? ICON.starOn : ICON.star}
+                  </button>
+                  <button class="btn-remind ${isRem ? "on" : ""}" data-evrem="${ev.id}" data-evtitle="${esc(ev.title)}" title="Set reminder">
+                    ${isRem ? ICON.bellOn : ICON.bell}
+                  </button>
+                </div>
               </div>
               <h3>${esc(ev.title)}</h3>
               <p class="notice-time">🗓️ <b>${esc(ev.date)}</b> · 📍 <i>${esc(ev.venue)}</i></p>
@@ -1075,6 +1367,28 @@ function viewNoticeboard(v) {
   `;
 
   v.onclick = (e) => {
+    // Star/Interest on Event
+    const starBtn = e.target.closest("[data-starev]");
+    if (starBtn) {
+      const id = starBtn.dataset.starev;
+      const title = starBtn.dataset.stitle;
+      me.interested = me.interested || { classes: [], events: [] };
+      if (me.interested.events.includes(id)) {
+        me.interested.events = me.interested.events.filter(x => x !== id);
+        starBtn.classList.remove("on");
+        starBtn.innerHTML = ICON.star;
+        toast(`Removed ${title} from Interested.`);
+      } else {
+        me.interested.events.push(id);
+        starBtn.classList.add("on");
+        starBtn.innerHTML = ICON.starOn;
+        toast(`Marked as Interested in ${title}! 🎯`);
+      }
+      saveMe(me);
+      return;
+    }
+
+    // Reminder toggle
     const rBtn = e.target.closest("[data-evrem]");
     if (rBtn) {
       const id = rBtn.dataset.evrem;
@@ -1091,7 +1405,128 @@ function viewNoticeboard(v) {
         rBtn.innerHTML = ICON.bellOn;
         setupReminder(title, "Campus Event");
       }
-      save();
+      saveMe(me);
+      return;
+    }
+
+    const goBtn = e.target.closest("[data-w]");
+    if (goBtn) {
+      to = goBtn.dataset.w;
+      tab(0);
+      go();
+    }
+  };
+}
+
+/* ---------- Interested Classes & Events Tab ---------- */
+function viewInterested(v) {
+  const interestedClasses = me.interested?.classes || [];
+  const interestedEvents = me.interested?.events || [];
+
+  // Helper to find schedule slots for a class
+  function findClassSlots(subjectId) {
+    const times = Object.fromEntries(B.periods.map((p) => [p[0], p]));
+    const list = [];
+    for (const [dayName, daySchedule] of Object.entries(B.days)) {
+      for (const [p, span, id, g] of daySchedule) {
+        if (id === subjectId && (!g || g === me.group)) {
+          list.push(`${dayName.slice(0, 3)} ${times[p][1]}-${times[p + span - 1][2]}`);
+        }
+      }
+    }
+    return list;
+  }
+
+  const classesHTML = interestedClasses.length > 0 ? interestedClasses.map((id) => {
+    const s = subj(id);
+    const slots = findClassSlots(id);
+    return `
+      <div class="slot in" style="border-left-color:var(--sun);">
+        <div class="t">
+          <b>${esc(s.short)}</b>
+          <small>${slots.length > 0 ? esc(slots[0]) : "Elective"}</small>
+        </div>
+        <div class="b">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <h3>${esc(s.name)}</h3>
+            <button class="btn-star on" data-unstarcls="${s.id}" title="Remove from Interested">${ICON.starOn}</button>
+          </div>
+          <p>${esc(s.teacher || "Faculty")}, <b>${esc(s.venue)}</b></p>
+          ${slots.length > 1 ? `<p class="hint">All slots: ${esc(slots.join(" · "))}</p>` : ""}
+          ${s.where ? `<button class="go" data-w="${s.where}" style="margin-top:6px;">Take me there ➔</button>` : ""}
+        </div>
+      </div>
+    `;
+  }).join("") : `
+    <div class="empty-state">
+      <p>No starred classes yet. Tap the <b>⭐</b> on any lecture or lab slot in <b>My classes</b> to add it to your favorites!</p>
+    </div>
+  `;
+
+  const eventsHTML = interestedEvents.length > 0 ? interestedEvents.map((evId) => {
+    const ev = EVENTS.find(x => x.id === evId) || { id: evId, title: "Campus Event", badge: "Notice", date: "TBA", venue: "Campus", desc: "" };
+    return `
+      <div class="notice-card in" style="border-left-color:var(--sun);">
+        <div class="notice-header">
+          <span class="notice-tag tag-${ev.badge.toLowerCase().replace(/\s+/g, '-')}">${esc(ev.badge)}</span>
+          <button class="btn-star on" data-unstarev="${ev.id}" title="Remove from Interested">${ICON.starOn}</button>
+        </div>
+        <h3>${esc(ev.title)}</h3>
+        <p class="notice-time">🗓️ <b>${esc(ev.date)}</b> · 📍 <i>${esc(ev.venue)}</i></p>
+        <p class="notice-desc">${esc(ev.desc)}</p>
+        ${ev.where ? `<button class="go" data-w="${ev.where}" style="margin-top:8px">Get Directions ➔</button>` : ""}
+      </div>
+    `;
+  }).join("") : `
+    <div class="empty-state">
+      <p>No interested events yet. Tap the <b>⭐</b> on any hackathon, workshop, or deadline in the <b>Noticeboard</b> to track it here!</p>
+    </div>
+  `;
+
+  v.innerHTML = `
+    <div class="companion-card in">
+      <div class="companion-mascot">${mascotSVG("thumbsup")}</div>
+      <div class="companion-text">
+        <b>Your Interested Hub</b>
+        <p>Curated list of classes you want to attend and campus events you've pinned.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2>⭐ Starred Classes (${interestedClasses.length})</h2>
+      </div>
+      ${classesHTML}
+    </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2>🎯 Interested Events & Activities (${interestedEvents.length})</h2>
+      </div>
+      <div class="notice-list">
+        ${eventsHTML}
+      </div>
+    </div>
+  `;
+
+  v.onclick = (e) => {
+    const unstarCls = e.target.closest("[data-unstarcls]");
+    if (unstarCls) {
+      const id = unstarCls.dataset.unstarcls;
+      me.interested.classes = me.interested.classes.filter(x => x !== id);
+      saveMe(me);
+      toast("Removed from Interested classes.");
+      viewInterested(v);
+      return;
+    }
+
+    const unstarEv = e.target.closest("[data-unstarev]");
+    if (unstarEv) {
+      const id = unstarEv.dataset.unstarev;
+      me.interested.events = me.interested.events.filter(x => x !== id);
+      saveMe(me);
+      toast("Removed from Interested events.");
+      viewInterested(v);
       return;
     }
 
