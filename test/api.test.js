@@ -142,3 +142,29 @@ test("POST /api/ask rejects invalid subject or question", async () => {
   });
   assert.equal(res.status, 400);
 });
+
+test("GET /api/users returns registered profiles", async () => {
+  const res = await fetch(`${baseUrl}/api/users`);
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.ok(data.users);
+});
+
+test("POST /api/user saves and updates profile", async () => {
+  const testProfile = {
+    username: "testuser",
+    name: "Test Student",
+    branch: "cs",
+    group: 1,
+    subjects: ["maths1"]
+  };
+  const res = await fetch(`${baseUrl}/api/user`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(testProfile)
+  });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.ok, true);
+  assert.equal(data.user.username, "testuser");
+});

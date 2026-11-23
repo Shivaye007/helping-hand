@@ -17,6 +17,60 @@ const graph = buildGraph(campus);
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
+// Persistent User Store with Supabase Cloud Sync Support
+const USERS_FILE = path.resolve("data/users.json");
+function loadServerUsers() {
+  try {
+    if (fs.existsSync(USERS_FILE)) {
+      return JSON.parse(fs.readFileSync(USERS_FILE, "utf8")) || {};
+    }
+  } catch (err) {
+    console.error("Error reading users.json:", err.message);
+  }
+  return {};
+}
+
+function saveServerUsers(users) {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
+  } catch (err) {
+    console.error("Error writing users.json:", err.message);
+  }
+}
+
+// Optional Supabase Cloud Database Integration
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+
+async function syncUserToSupabase(profile) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Prefer": "resolution=merge-duplicates"
+      },
+      body: JSON.stringify({
+        username: profile.username,
+        name: profile.name,
+        branch: profile.branch,
+        group: profile.group,
+        password: profile.password || "",
+        data: profile,
+        updated_at: new Date().toISOString()
+      })
+    });
+    if (!res.ok) {
+      console.warn("Supabase sync warning:", await res.text());
+    }
+  } catch (e) {
+    console.warn("Supabase network error:", e.message);
+  }
+}
+
 // Campus events / noticeboard data
 const events = [
   {
@@ -73,6 +127,26 @@ export async function reword(prompt) {
 app.get("/api/campus", (req, res) => res.json(campus));
 app.get("/api/academics", (req, res) => res.json(academics));
 app.get("/api/events", (req, res) => res.json(events));
+
+// User Profile Endpoints with Server Persistence & Supabase sync
+app.get("/api/users", (req, res) => {
+  const users = loadServerUsers();
+  res.json({ users, supabaseEnabled: Boolean(SUPABASE_URL && SUPABASE_KEY) });
+});
+
+app.post("/api/user", async (req, res) => {
+  const profile = req.body;
+  if (!profile || !profile.username) {
+    return res.status(400).json({ error: "Username is required." });
+  }
+  const key = profile.username.trim().toLowerCase();
+  const users = loadServerUsers();
+  users[key] = { ...profile, username: key, updatedAt: new Date().toISOString() };
+  saveServerUsers(users);
+  // Asynchronously sync to Supabase if configured
+  syncUserToSupabase(users[key]).catch(() => {});
+  res.json({ ok: true, user: users[key] });
+});
 
 app.post("/api/route", async (req, res) => {
   const { from, to, lang = "en" } = req.body || {};

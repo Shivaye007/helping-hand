@@ -1,0 +1,54 @@
+{
+  "shivang": {
+    "username": "shivang",
+    "name": "Shivang Roy",
+    "password": "",
+    "branch": "el",
+    "group": 1,
+    "subjects": [
+      "maths1",
+      "physics",
+      "bee",
+      "pcomp",
+      "ed",
+      "engg-skills"
+    ],
+    "streak": 5,
+    "lastVisitDate": "2026-11-23",
+    "attendance": {
+      "maths1": {
+        "attended": 14,
+        "total": 16
+      },
+      "physics": {
+        "attended": 12,
+        "total": 14
+      },
+      "bee": {
+        "attended": 11,
+        "total": 12
+      },
+      "pcomp": {
+        "attended": 15,
+        "total": 15
+      }
+    },
+    "reminders": [],
+    "interested": {
+      "classes": [],
+      "events": [
+        "hack2026"
+      ]
+    }
+  },
+  "testuser": {
+    "username": "testuser",
+    "name": "Test Student",
+    "branch": "cs",
+    "group": 1,
+    "subjects": [
+      "maths1"
+    ],
+    "updatedAt": "2026-11-23T07:49:38.033Z"
+  }
+}

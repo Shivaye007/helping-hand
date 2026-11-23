@@ -101,7 +101,8 @@ const api = async (url, body) => {
   return d;
 };
 
-// User Profile & Registry Storage
+// User Profile & Registry Storage with Cloud / Server Synchronization
+let isServerOnline = true;
 const getUsers = () => {
   try {
     return JSON.parse(localStorage.getItem("hh_users")) || {};
@@ -120,12 +121,16 @@ const saveMe = (user) => {
   me = user;
   if (!me.interested) me.interested = { classes: [], events: [] };
   if (!me.reminders) me.reminders = [];
+  if (!me.attendance) me.attendance = {};
+  if (!me.streak) me.streak = 1;
   try {
     localStorage.setItem("hh_me", JSON.stringify(me));
     if (me.username) {
       const users = getUsers();
       users[me.username.toLowerCase()] = me;
       saveUsers(users);
+      // Background sync to server & Supabase
+      api("/api/user", me).catch(() => {});
     }
   } catch {}
 };
@@ -135,11 +140,245 @@ const loadMe = () => {
     const data = JSON.parse(localStorage.getItem("hh_me"));
     if (data && !data.interested) data.interested = { classes: [], events: [] };
     if (data && !data.reminders) data.reminders = [];
+    if (data && !data.attendance) data.attendance = {};
     return data;
   } catch {
     return null;
   }
 };
+
+// ─── Sound Effects (Web Audio API Synthesizer) ─────────────────────────
+let audioCtx = null;
+let isSoundMuted = localStorage.getItem("hh_sound_muted") === "true";
+
+function toggleSound() {
+  isSoundMuted = !isSoundMuted;
+  localStorage.setItem("hh_sound_muted", isSoundMuted);
+  playSynthSound(isSoundMuted ? "click" : "success");
+  toast(isSoundMuted ? "Sound muted 🔇" : "Sound enabled 🔊");
+  const btn = $("#btnSound");
+  if (btn) btn.innerHTML = isSoundMuted ? "🔇 Muted" : "🔊 Sound";
+}
+
+function playSynthSound(type = "click") {
+  if (isSoundMuted) return;
+  try {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return;
+    audioCtx = audioCtx || new AudioCtor();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const now = audioCtx.currentTime;
+
+    if (type === "click") {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(480, now);
+      osc.frequency.exponentialRampToValueAtTime(720, now + 0.04);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc.start(now);
+      osc.stop(now + 0.04);
+    } else if (type === "success") {
+      [523.25, 659.25, 783.99].forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+        gain.gain.setValueAtTime(0.12, now + idx * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.22);
+        osc.start(now + idx * 0.07);
+        osc.stop(now + idx * 0.07 + 0.22);
+      });
+    } else if (type === "celebrate") {
+      [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        gain.gain.setValueAtTime(0.14, now + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.35);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.35);
+      });
+    }
+  } catch (e) {}
+}
+
+// ─── Haptic Feedback ──────────────────────────────────────────────────
+function haptic(pattern = [15]) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  } catch (e) {}
+}
+
+// ─── Lightweight Canvas Confetti Engine ───────────────────────────────
+let confettiActive = false;
+function launchConfetti(durationMs = 2400) {
+  const canvas = document.getElementById("confetti-canvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ["#FFC83D", "#12B5A6", "#FF6B5E", "#7B5CFA", "#FF6EB4", "#38BDF8", "#A3E635"];
+  const particles = Array.from({ length: 65 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * -canvas.height * 0.3,
+    size: Math.random() * 8 + 4,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    speedX: (Math.random() - 0.5) * 6,
+    speedY: Math.random() * 4 + 3,
+    rot: Math.random() * 360,
+    rotSpeed: (Math.random() - 0.5) * 10
+  }));
+
+  confettiActive = true;
+  const startTime = Date.now();
+
+  function render() {
+    if (!confettiActive) return;
+    const elapsed = Date.now() - startTime;
+    if (elapsed > durationMs) {
+      confettiActive = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of particles) {
+      p.x += p.speedX;
+      p.y += p.speedY;
+      p.rot += p.rotSpeed;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rot * Math.PI) / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.4);
+      ctx.restore();
+    }
+    requestAnimationFrame(render);
+  }
+  render();
+}
+
+// ─── Dark Mode Toggle ─────────────────────────────────────────────────
+function initDarkMode() {
+  const isDark = localStorage.getItem("hh_dark_mode") === "true";
+  document.body.classList.toggle("dark", isDark);
+}
+function toggleDarkMode() {
+  const willBeDark = !document.body.classList.contains("dark");
+  document.body.classList.toggle("dark", willBeDark);
+  localStorage.setItem("hh_dark_mode", willBeDark);
+  playSynthSound("click");
+  haptic([12]);
+  toast(willBeDark ? "Dark mode on 🌙" : "Light mode on ☀️");
+  const btn = $("#btnDark");
+  if (btn) btn.innerHTML = willBeDark ? "☀️ Light" : "🌙 Dark";
+}
+
+// ─── Time-Aware Hinglish Greetings ────────────────────────────────────
+function getTimeGreeting(name) {
+  const hr = new Date().getHours();
+  const cleanName = (name || "Dost").split(" ")[0];
+  if (hr >= 5 && hr < 12) return `Shubh Prabhat ☀️ ${cleanName}! Ready for first lecture?`;
+  if (hr >= 12 && hr < 17) return `Good afternoon 🌤️ ${cleanName}! Lunch ho gaya ya agla lab?`;
+  if (hr >= 17 && hr < 21) return `Good evening 🌆 ${cleanName}! Aaj ka din kaisa raha?`;
+  return `Late night grind 🌙 ${cleanName}? Paani peelo aur aaram se padho!`;
+}
+
+// ─── Campus Streak Tracker ───────────────────────────────────────────
+function updateStreak(user) {
+  if (!user) return;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (!user.streak) user.streak = 1;
+  if (!user.lastVisitDate) {
+    user.lastVisitDate = todayStr;
+  } else if (user.lastVisitDate !== todayStr) {
+    const prev = new Date(user.lastVisitDate);
+    const curr = new Date(todayStr);
+    const diffDays = Math.round((curr - prev) / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) {
+      user.streak = (user.streak || 0) + 1;
+    } else if (diffDays > 1) {
+      user.streak = 1;
+    }
+    user.lastVisitDate = todayStr;
+    saveMe(user);
+  }
+}
+
+// ─── Daily College Quotes (Humorous & Encouraging) ─────────────────────
+const CAMPUS_QUOTES = [
+  { q: "Theory me 40 marks, practical me 60 marks, aur campus walk me 5000 steps! 🚶‍♂️", a: "Daily College Fact" },
+  { q: "Assignment deadline ke 5 minute pehle sabse tezi aati hai! ⚡", a: "Hostel Legend" },
+  { q: "Engineering is 10% coding, 20% maths, aur 70% agla classroom dhoondhna! 🗺️", a: "AITD Senior" },
+  { q: "Chai + canteen samosa = 100% attendance motivation! ☕", a: "Canteen Vibes" },
+  { q: "Attendance 75% se upar rakho, exam time sukoon se bitega! 📚", a: "Faculty Advice" },
+  { q: "Jab rasta na samjhe, toh Helping Hand se pooch lo! 🤖✨", a: "AITD Companion" }
+];
+function getDailyQuote() {
+  const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+  return CAMPUS_QUOTES[dayOfYear % CAMPUS_QUOTES.length];
+}
+
+// ─── Pomodoro Focus Timer State ───────────────────────────────────────
+let pomodoroSeconds = 25 * 60;
+let pomodoroTimerId = null;
+let pomodoroRunning = false;
+let pomodoroMode = "study"; // "study" | "break"
+let showPomodoroWidget = false;
+
+function togglePomodoro() {
+  showPomodoroWidget = !showPomodoroWidget;
+  const pCard = $("#pomodoroCard");
+  if (pCard) {
+    pCard.style.display = showPomodoroWidget ? "block" : "none";
+    if (showPomodoroWidget) pCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function tickPomodoro() {
+  if (pomodoroSeconds > 0) {
+    pomodoroSeconds--;
+    updatePomodoroDisplay();
+  } else {
+    clearInterval(pomodoroTimerId);
+    pomodoroRunning = false;
+    launchConfetti();
+    playSynthSound("celebrate");
+    haptic([100, 100, 100]);
+    if (pomodoroMode === "study") {
+      pomodoroMode = "break";
+      pomodoroSeconds = 5 * 60;
+      toast("Great study session! 25 min done 🎉 Chai break time ☕");
+    } else {
+      pomodoroMode = "study";
+      pomodoroSeconds = 25 * 60;
+      toast("Break over! Ready for next 25 min focus sprint 📚");
+    }
+    updatePomodoroDisplay();
+  }
+}
+
+function updatePomodoroDisplay() {
+  const digits = $("#pomodoroDigits");
+  const sub = $("#pomodoroSub");
+  if (!digits) return;
+  const m = String(Math.floor(pomodoroSeconds / 60)).padStart(2, "0");
+  const s = String(pomodoroSeconds % 60).padStart(2, "0");
+  digits.textContent = `${m}:${s}`;
+  if (sub) sub.textContent = pomodoroMode === "study" ? "🎯 25-Min Study Sprint" : "☕ 5-Min Chai Break";
+}
 
 let toastT;
 function toast(msg) {
@@ -259,15 +498,46 @@ async function setupReminder(itemTitle, timeNotice) {
 }
 
 async function init() {
+  initDarkMode();
+
+  // Setup mobile swipe gestures to switch between tabs
+  let touchStartX = 0;
+  let touchStartY = 0;
+  window.addEventListener("touchstart", (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  window.addEventListener("touchend", (e) => {
+    if (!me) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const deltaY = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(deltaX) > 65 && Math.abs(deltaY) < 55) {
+      const tabsCount = 5;
+      if (deltaX < 0 && currentTabIdx < tabsCount - 1) {
+        tab(currentTabIdx + 1);
+      } else if (deltaX > 0 && currentTabIdx > 0) {
+        tab(currentTabIdx - 1);
+      }
+    }
+  }, { passive: true });
+
   try {
-    const [cData, aData, eData] = await Promise.all([
+    const [cData, aData, eData, uData] = await Promise.all([
       api("/api/campus"),
       api("/api/academics"),
-      api("/api/events").catch(() => [])
+      api("/api/events").catch(() => []),
+      api("/api/users").catch(() => ({ users: {} }))
     ]);
     C = cData;
     A = aData;
     EVENTS = eData || [];
+
+    // Merge server users with local users
+    if (uData && uData.users) {
+      const localUsers = getUsers();
+      const merged = { ...localUsers, ...uData.users };
+      saveUsers(merged);
+    }
   } catch (e) {
     root.innerHTML = `<div class="wrap"><div class="card err">Could not load campus data. Please ensure the server is running (<b>npm start</b>) and refresh.</div></div>`;
     return;
@@ -316,16 +586,17 @@ function showWelcome(initialMode = "login") {
           </div>
 
           ${authMode === "login" ? `
+            <div class="welcome-emoji-float">🏫 📚 🗺️ ✨</div>
             <h1>Welcome Back!</h1>
-            <p>Log in with your username to restore your branch, timetable, and starred items.</p>
+            <p>Apna username ya naam enter karo to restore your timetable & map.</p>
             
             ${userList.length > 0 ? `
               <div class="quick-profiles-box">
-                <span class="quick-profiles-label">Saved profiles on this device:</span>
+                <span class="quick-profiles-label">⚡ 1-Tap Quick Login (Saved Students):</span>
                 <div class="chips" id="quickChips">
                   ${userList.map((u) => `
-                    <button class="chip" data-quick="${esc(u.username)}">
-                      👤 <b>${esc(u.name)}</b> <small>(${esc(u.branch ? u.branch.toUpperCase() : "CS")})</small>
+                    <button class="chip ${u.username === (userList[0]?.username) ? "on" : ""}" data-quick="${esc(u.username)}" style="font-weight:700;">
+                      👤 <b>${esc(u.name)}</b> <small>(${esc(u.branch ? u.branch.toUpperCase() : "EL")})</small>
                     </button>
                   `).join("")}
                 </div>
@@ -333,30 +604,32 @@ function showWelcome(initialMode = "login") {
             ` : ""}
 
             <div class="auth-box">
-              <label for="loginUser">Username</label>
-              <input id="loginUser" type="text" autocomplete="username" placeholder="e.g. shivam" value="${esc(userList[0]?.username || "")}">
+              <label for="loginUser">Username or Full Name</label>
+              <input id="loginUser" type="text" autocomplete="username" placeholder="e.g. shivang ya Shivang Roy" value="${esc(userList[0]?.username || "")}">
 
-              <label for="loginPass" style="margin-top:12px">Passcode (if set)</label>
-              <input id="loginPass" type="password" autocomplete="current-password" placeholder="Passcode (leave blank if none)">
+              <label for="loginPass" style="margin-top:12px">Passcode (agar set kiya ho)</label>
+              <input id="loginPass" type="password" autocomplete="current-password" placeholder="Passcode (khali chhod dein if none)">
             </div>
 
             <button class="btn primary" id="doLogin">Log In ➔</button>
+            <button class="btn ghost" id="doDemo" style="margin-top:8px; width:100%; text-align:center;">🚀 1-Tap Guest Demo Mode</button>
             <p class="hint" style="text-align:center; margin-top:14px;">
-              First time here? <a href="#" id="toSignup" class="auth-link">Create a student profile</a>
+              Pehli baar aaye ho? <a href="#" id="toSignup" class="auth-link">Naya Student Profile banao ➔</a>
             </p>
           ` : `
+            <div class="welcome-emoji-float">🏫 📚 🗺️ ✨</div>
             <h1>Create Student Profile</h1>
-            <p>Pick your branch and subjects once. Your schedule is saved permanently for 1-click logins.</p>
+            <p>Apna branch aur subjects chuno. Timetable aur map instantly load ho jayega!</p>
 
             <div class="auth-box">
               <label for="nm">Your Full Name</label>
-              <input id="nm" type="text" autocomplete="name" placeholder="e.g. Shivam Roy">
+              <input id="nm" type="text" autocomplete="name" placeholder="e.g. Shivang Roy">
 
               <label for="usr" style="margin-top:12px">Choose a Username</label>
-              <input id="usr" type="text" autocomplete="username" placeholder="e.g. shivam (used to log in)">
+              <input id="usr" type="text" autocomplete="username" placeholder="e.g. shivang (login karne ke liye)">
 
               <label for="pwd" style="margin-top:12px">Passcode (optional)</label>
-              <input id="pwd" type="password" autocomplete="new-password" placeholder="Set a 4-digit PIN or password">
+              <input id="pwd" type="password" autocomplete="new-password" placeholder="Set a PIN or password (or leave blank)">
             </div>
 
             <div class="lab">Select Your Branch (All 7 Sections)</div>
@@ -390,38 +663,99 @@ function showWelcome(initialMode = "login") {
     $("#toSignup")?.addEventListener("click", (e) => { e.preventDefault(); authMode = "signup"; render(); });
     $("#toLogin")?.addEventListener("click", (e) => { e.preventDefault(); authMode = "login"; render(); });
 
-    // Quick chip autofill
+    // Helper for robust user lookup
+    function lookupUser(query) {
+      if (!query) return null;
+      const q = query.trim().toLowerCase();
+      const qNoSpace = q.replace(/\s+/g, "");
+      const all = getUsers();
+      if (all[q]) return all[q];
+      if (all[qNoSpace]) return all[qNoSpace];
+      for (const u of Object.values(all)) {
+        if (u.username && u.username.toLowerCase() === q) return u;
+        if (u.username && u.username.toLowerCase().replace(/\s+/g, "") === qNoSpace) return u;
+        if (u.name && u.name.toLowerCase() === q) return u;
+        if (u.name && u.name.toLowerCase().replace(/\s+/g, "") === qNoSpace) return u;
+        if (u.name && u.name.toLowerCase().includes(q)) return u;
+      }
+      return null;
+    }
+
+    // Quick chip 1-tap login
     $("#quickChips")?.addEventListener("click", (e) => {
       const b = e.target.closest("[data-quick]");
       if (!b) return;
-      const u = b.dataset.quick;
-      const input = $("#loginUser");
-      if (input) {
-        input.value = u;
-        $("#loginPass")?.focus();
+      const uKey = b.dataset.quick;
+      const existing = lookupUser(uKey);
+      if (existing) {
+        if (!existing.password) {
+          // Instant 1-tap login if no password
+          saveMe(existing);
+          B = A.branches[me.branch];
+          launchConfetti(1800);
+          playSynthSound("success");
+          haptic([20, 30]);
+          toast(`Welcome back, ${me.name}! 👋 Ready for classes!`);
+          showApp();
+          return;
+        }
+        const input = $("#loginUser");
+        if (input) input.value = existing.username;
+        const pass = $("#loginPass");
+        if (pass) {
+          pass.focus();
+          toast(`Hi ${existing.name}! Passcode enter karo to unlock 🔑`);
+        }
       }
     });
 
-    // Login Action
+    // 1-Tap Guest Demo Mode
+    $("#doDemo")?.addEventListener("click", () => {
+      const demoUser = lookupUser("shivang") || {
+        username: "demo_student",
+        name: "Demo Student",
+        password: "",
+        branch: "el",
+        group: 1,
+        subjects: A.branches["el"] ? A.branches["el"].subjects.filter(s => !s.extra).map(s => s.id) : ["maths1"],
+        streak: 1,
+        attendance: {},
+        interested: { classes: [], events: [] }
+      };
+      saveMe(demoUser);
+      B = A.branches[me.branch];
+      launchConfetti(1600);
+      playSynthSound("success");
+      toast(`Welcome, ${demoUser.name}! Exploring in Demo Mode 🚀`);
+      showApp();
+    });
+
+    // Login Action with robust matching
     $("#doLogin")?.addEventListener("click", () => {
-      const uInput = $("#loginUser")?.value.trim().toLowerCase();
+      const uInput = $("#loginUser")?.value.trim();
       const pInput = $("#loginPass")?.value.trim();
       if (!uInput) {
         shake($("#loginUser"));
-        return toast("Please enter your username.");
+        haptic([40]);
+        return toast("Please enter your username or name.");
       }
-      const existing = users[uInput];
+      const existing = lookupUser(uInput);
       if (!existing) {
         shake($("#loginUser"));
-        return toast("Username not found. Switch to 'Sign Up' to create your account!");
+        haptic([40, 40]);
+        return toast("Account nahi mila dost! 'New Student' tab se 5 second me bana lo 🚀");
       }
       if (existing.password && existing.password !== pInput) {
         shake($("#loginPass"));
-        return toast("Incorrect passcode. Please try again.");
+        haptic([50]);
+        return toast("Galat passcode dost! Ek baar fir try karo 🔑");
       }
       saveMe(existing);
       B = A.branches[me.branch];
-      toast(`Welcome back, ${me.name}! 👋`);
+      launchConfetti(2000);
+      playSynthSound("success");
+      haptic([20, 30]);
+      toast(`Welcome back, ${me.name}! 👋 Ready for campus!`);
       showApp();
     });
 
@@ -705,7 +1039,11 @@ function getLiveClassStatus() {
   return { type: "morning", text: `🌅 Good morning! First class starts at 10:00 AM. Section: ${B.section} (${B.classroom})` };
 }
 
+let currentTabIdx = 0;
+
 function showApp() {
+  updateStreak(me);
+  document.body.dataset.branch = me.branch || "el";
   const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
   day = B.days[todayName] ? todayName : "Monday";
   askSub = me.subjects[0];
@@ -717,6 +1055,18 @@ function showApp() {
   headerMoodIdx = 0;
 
   const live = getLiveClassStatus();
+  const isLateUrgent = live.where && (live.type === "ongoing" || live.type === "next");
+
+  const lateBannerHTML = isLateUrgent ? `
+    <div class="late-banner in">
+      <div class="late-info">
+        <span class="late-tag">🏃‍♂️ Late ho rahe ho?</span>
+        <span class="late-title">${esc(live.text)}</span>
+      </div>
+      <button class="late-btn" data-w="${live.where}">Shortest Rasta ➔</button>
+    </div>
+  ` : "";
+
   const liveBannerHTML = `
     <div class="live-banner in live-${live.type}">
       <div class="live-content">
@@ -728,6 +1078,7 @@ function showApp() {
   `;
 
   const starCount = (me.interested?.classes?.length || 0) + (me.interested?.events?.length || 0);
+  const isDark = document.body.classList.contains("dark");
 
   root.innerHTML = `
     <header class="top">
@@ -735,8 +1086,14 @@ function showApp() {
         <button class="mbtn" id="mas" aria-label="Tap the mascot to change moods">${mascotSVG("wave")}</button>
         <div class="hello">
           <div class="brand-heading">AITD Helping Hand</div>
-          <h1>Hi, ${esc(me.name)}!</h1>
+          <h1>${esc(getTimeGreeting(me.name))}</h1>
           <p>${esc(B.name)} · Sec ${esc(B.section)} · Room ${esc(B.classroom)} · Grp ${me.group}</p>
+          <div class="header-tools">
+            <span class="tool-pill streak-pill" id="pillStreak">🔥 ${me.streak || 1} Day Streak</span>
+            <button class="tool-pill" id="btnDark">${isDark ? "☀️ Light" : "🌙 Dark"}</button>
+            <button class="tool-pill" id="btnSound">${isSoundMuted ? "🔇 Muted" : "🔊 Sound"}</button>
+            <button class="tool-pill" id="btnPomodoro">⏱️ Focus Timer</button>
+          </div>
         </div>
         <div class="header-actions">
           <button class="ghost" id="edit">Profile</button>
@@ -744,17 +1101,40 @@ function showApp() {
       </div>
     </header>
     <div class="wrap">
-      ${liveBannerHTML}
+      ${lateBannerHTML}
+      ${!isLateUrgent ? liveBannerHTML : ""}
+      
+      <!-- Collapsible Pomodoro Focus Card -->
+      <div class="pomodoro-card in" id="pomodoroCard" style="display:${showPomodoroWidget ? "block" : "none"};">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3>⏱️ Pomodoro Focus Sprint</h3>
+          <span class="badge-units" id="pomodoroSub">🎯 25-Min Study Sprint</span>
+        </div>
+        <div class="pomodoro-digits" id="pomodoroDigits">25:00</div>
+        <div class="pomodoro-controls">
+          <button class="pomodoro-btn start" id="btnPomoStart">Start Focus 🚀</button>
+          <button class="pomodoro-btn reset" id="btnPomoReset">Reset 🔄</button>
+        </div>
+      </div>
+
       <nav class="tabs" role="tablist">
         <i class="ink"></i>
-        <button role="tab" data-t="0" class="on">Find a place</button>
-        <button role="tab" data-t="1">My classes</button>
-        <button role="tab" data-t="2">Ask</button>
-        <button role="tab" data-t="3">Noticeboard</button>
-        <button role="tab" data-t="4">Interested ${starCount > 0 ? `<span class="badge-tab">${starCount}</span>` : ""}</button>
+        <button role="tab" data-t="0" class="on">🗺️ Find</button>
+        <button role="tab" data-t="1">📅 Classes</button>
+        <button role="tab" data-t="2">🤖 Ask</button>
+        <button role="tab" data-t="3">📢 Notice</button>
+        <button role="tab" data-t="4">⭐ Saved ${starCount > 0 ? `<span class="badge-tab">${starCount}</span>` : ""}</button>
       </nav>
       <main id="view"></main>
     </div>`;
+
+  // Late and live buttons
+  $(".late-btn")?.addEventListener("click", (e) => {
+    to = e.currentTarget.dataset.w;
+    from = "entr";
+    tab(0);
+    go();
+  });
 
   $(".live-banner")?.addEventListener("click", (e) => {
     const b = e.target.closest("[data-w]");
@@ -764,10 +1144,53 @@ function showApp() {
     go();
   });
 
+  // Header quick tools
+  $("#pillStreak")?.addEventListener("click", () => {
+    toast(`🔥 Wah! You're on a ${me.streak || 1}-day campus visit streak. Consistency is key!`);
+    playSynthSound("success");
+    haptic([20, 20]);
+  });
+  $("#btnDark")?.addEventListener("click", toggleDarkMode);
+  $("#btnSound")?.addEventListener("click", toggleSound);
+  $("#btnPomodoro")?.addEventListener("click", () => {
+    togglePomodoro();
+    playSynthSound("click");
+    haptic([15]);
+  });
+
+  // Pomodoro Actions
+  $("#btnPomoStart")?.addEventListener("click", () => {
+    if (pomodoroRunning) {
+      clearInterval(pomodoroTimerId);
+      pomodoroRunning = false;
+      $("#btnPomoStart").textContent = "Resume 🚀";
+      toast("Study timer paused ⏸️");
+    } else {
+      pomodoroRunning = true;
+      $("#btnPomoStart").textContent = "Pause ⏸️";
+      pomodoroTimerId = setInterval(tickPomodoro, 1000);
+      playSynthSound("click");
+      haptic([25]);
+      toast("Focus mode on! Dhyan se padho 📚✨");
+    }
+  });
+
+  $("#btnPomoReset")?.addEventListener("click", () => {
+    clearInterval(pomodoroTimerId);
+    pomodoroRunning = false;
+    pomodoroMode = "study";
+    pomodoroSeconds = 25 * 60;
+    updatePomodoroDisplay();
+    $("#btnPomoStart").textContent = "Start Focus 🚀";
+    toast("Timer reset to 25 min 🔄");
+  });
+
   $("#mas").onclick = (e) => {
     headerMoodIdx = (headerMoodIdx + 1) % headerMoods.length;
     const mood = headerMoods[headerMoodIdx];
     e.currentTarget.innerHTML = mascotSVG(mood);
+    playSynthSound("click");
+    haptic([20]);
     toast(moodGreetings[headerMoodIdx]);
   };
 
@@ -781,6 +1204,9 @@ function showApp() {
 }
 
 function tab(i) {
+  currentTabIdx = i;
+  playSynthSound("click");
+  haptic([10]);
   const tabs = $$(".tabs button");
   const count = tabs.length || 5;
   tabs.forEach((b, k) => {
@@ -910,11 +1336,11 @@ function viewFind(v) {
       <button class="amenity-chip" id="amenityWash">🚻 Nearest Washroom</button>
     </div>
 
-    <div class="card">
+    <div class="card happy-nav pop-in">
       <div id="f1"></div>
       <div class="swapRow"><button class="swap" id="swap" aria-label="Swap start and destination">${ICON.swap}</button></div>
       <div id="f2" style="margin-top:6px"></div>
-      <button class="btn primary" id="go">Show me the way</button>
+      <button class="btn primary" id="go">Show me the way ➔</button>
     </div>
     <div id="result"></div>`;
 
@@ -962,18 +1388,25 @@ function viewFind(v) {
 async function go() {
   if (!to) {
     shake($("#toBtn"));
-    return toast("Choose where you want to go.");
+    haptic([30]);
+    return toast("Kahan jana hai dost? Destination choose karo 🗺️");
   }
   const b = $("#go");
   b?.classList.add("busy");
+  playSynthSound("click");
   try {
     route = await api("/api/route", { from, to, lang: currentLang });
     floor = N[route.path[0]].f;
     renderResult();
+    launchConfetti(2200);
+    playSynthSound("success");
+    haptic([30, 40, 50]);
+    toast(`Rasta mil gaya! 🎯 Shortest walking time: ${route.time}`);
     $("#result")?.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
     route = null;
-    if ($("#result")) $("#result").innerHTML = `<div class="err card in">${esc(e.message)}</div>`;
+    haptic([40, 40]);
+    if ($("#result")) $("#result").innerHTML = `<div class="err card in">Arey yaar! ${esc(e.message)} 🗺️</div>`;
   }
   b?.classList.remove("busy");
 }
@@ -1058,12 +1491,15 @@ function renderResult() {
 
   $("#arriveBtn").onclick = () => {
     stopSpeaking();
+    launchConfetti(2800);
+    playSynthSound("celebrate");
+    haptic([40, 50, 80]);
     $("#arriveBox").innerHTML = `
       <div class="arrived-mascot">${mascotSVG("thumbsup")}</div>
-      <h3>You have arrived! 🎉</h3>
-      <p>Thumbs up! Have a great lecture or session at <b>${esc(route.to)}</b>.</p>
+      <h3>Pahunch gaye! You have arrived! 🎉</h3>
+      <p>Thumbs up dost! Have a great lecture or session at <b>${esc(route.to)}</b>.</p>
     `;
-    toast("Thumbs up on arrival! 👍");
+    toast("Pahunch gaye! Thumbs up on arrival 👍🎉");
   };
 
   $("#floors").onclick = (e) => {
@@ -1168,6 +1604,34 @@ function viewClasses(v) {
     .filter(([, , id, g]) => (!g || g === me.group) && (me.subjects.includes(id) || subj(id).extra))
     .sort((a, b) => a[0] - b[0]);
 
+  // Daily Quote & Attendance Stats
+  const quote = getDailyQuote();
+  const quoteHTML = `
+    <div class="quote-card in">
+      <div class="quote-emoji">💡</div>
+      <div class="quote-text">
+        "${esc(quote.q)}"
+        <br><b>— ${esc(quote.a)}</b>
+      </div>
+    </div>
+  `;
+
+  let totalAttended = 0;
+  let totalClasses = 0;
+  me.attendance = me.attendance || {};
+  for (const sId of Object.keys(me.attendance)) {
+    totalAttended += me.attendance[sId].attended || 0;
+    totalClasses += me.attendance[sId].total || 0;
+  }
+  const overallPct = totalClasses > 0 ? Math.round((totalAttended / totalClasses) * 100) : 85;
+  const isSafe = overallPct >= 75;
+  const attSummaryHTML = `
+    <div class="attendance-summary-bar in">
+      <span>📊 <b>Overall Attendance:</b> <span class="${isSafe ? "att-safe" : "att-warn"}">${overallPct}%</span> (${isSafe ? "Safe Zone 🎉" : "Attendance Alert 🚨 (75% rule)"})</span>
+      <span style="font-size:11px; color:var(--mute);">${totalAttended}/${totalClasses || 0} Attended</span>
+    </div>
+  `;
+
   let html = "", lunch = false;
   rows.forEach(([p, span, id], i) => {
     if (!lunch && p > 4) {
@@ -1178,14 +1642,18 @@ function viewClasses(v) {
     const remKey = `${day}_${p}_${id}`;
     const hasRem = (me.reminders || []).includes(remKey);
     const isInterested = (me.interested?.classes || []).includes(s.id);
+    const attRecord = me.attendance[s.id] || { attended: 0, total: 0 };
 
     html += `
-      <div class="slot" style="animation-delay:${i * 60}ms">
+      <div class="slot in" style="animation-delay:${i * 50}ms">
         <div class="t">${a}<small>to ${b}</small></div>
         <div class="b">
           <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <h3>${esc(s.short)}${s.type.startsWith("Lab") ? '<span class="tag">Lab</span>' : ""}</h3>
             <div class="slot-actions">
+              <button class="btn-att-toggle ${attRecord.attended > 0 ? "attended" : ""}" data-att="${s.id}" data-attsub="${esc(s.short)}" title="Mark attendance">
+                ${attRecord.attended > 0 ? `✅ Present (${attRecord.attended}/${attRecord.total})` : `Mark Present 📝`}
+              </button>
               <button class="btn-star ${isInterested ? "on" : ""}" data-starcls="${s.id}" data-stitle="${esc(s.short)}" title="${isInterested ? "Remove from Interested" : "Add to Interested"}">
                 ${isInterested ? ICON.starOn : ICON.star}
               </button>
@@ -1204,7 +1672,7 @@ function viewClasses(v) {
   // Syllabus Hub HTML
   const syllabusData = A.syllabus || {};
   const syllabusHTML = `
-    <div class="card">
+    <div class="card happy-sched pop-in" style="margin-top:16px;">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <h2>📚 AKTU 1st Year Syllabus Hub</h2>
       </div>
@@ -1242,18 +1710,21 @@ function viewClasses(v) {
       <div class="companion-mascot">${mascotSVG("wave")}</div>
       <div class="companion-text">
         <b>Weekly Schedule · ${esc(B.name)} (Sec ${esc(B.section)})</b>
-        <p>Filtered for <b>Group ${me.group}</b>. Tap ⭐ to add classes to your Interested list, or 🔔 for alerts!</p>
+        <p>Filtered for <b>Group ${me.group}</b>. Tap ⭐ to save, 📝 to track attendance, or 🔔 for alerts!</p>
       </div>
     </div>
 
-    <div class="card">
+    ${quoteHTML}
+    ${attSummaryHTML}
+
+    <div class="card happy-sched pop-in">
       <div class="days" id="days">
         ${Object.keys(B.days).map((d) => `<button class="chip ${d === day ? "on" : ""}" data-d="${d}">${d.slice(0, 3)}${d === todayName ? '<i class="today"></i>' : ""}</button>`).join("")}
       </div>
-      ${html || '<p class="hint">No classes scheduled on this day.</p>'}
+      ${html || '<div class="empty-state">🎉 <b>Koi class nahi hai aaj!</b><br>Chill karo ya library / canteen me chai peeyo ☕🌿</div>'}
     </div>
 
-    <div class="card">
+    <div class="card pop-in" style="margin-top:16px;">
       <h2>Enrolled Subjects</h2>
       ${me.subjects.map((id) => {
         const s = subj(id);
@@ -1274,6 +1745,24 @@ function viewClasses(v) {
   };
 
   v.onclick = (e) => {
+    // Attendance Toggle
+    const attBtn = e.target.closest("[data-att]");
+    if (attBtn) {
+      const sId = attBtn.dataset.att;
+      const sTitle = attBtn.dataset.attsub;
+      me.attendance = me.attendance || {};
+      const cur = me.attendance[sId] || { attended: 0, total: 0 };
+      cur.attended += 1;
+      cur.total += 1;
+      me.attendance[sId] = cur;
+      saveMe(me);
+      playSynthSound("success");
+      haptic([20, 20]);
+      toast(`Marked present for ${sTitle}! Attendance: ${cur.attended}/${cur.total} 📝✨`);
+      viewClasses(v);
+      return;
+    }
+
     // Star/Interest on Class
     const starBtn = e.target.closest("[data-starcls]");
     if (starBtn) {
@@ -1337,7 +1826,7 @@ function viewNoticeboard(v) {
       </div>
     </div>
 
-    <div class="card">
+    <div class="card happy-notice pop-in">
       <h2>Upcoming Campus Events</h2>
       <div class="notice-list" style="margin-top:14px;">
         ${EVENTS.map((ev) => {
@@ -1383,7 +1872,10 @@ function viewNoticeboard(v) {
         me.interested.events.push(id);
         starBtn.classList.add("on");
         starBtn.innerHTML = ICON.starOn;
-        toast(`Marked as Interested in ${title}! 🎯`);
+        launchConfetti(1600);
+        playSynthSound("success");
+        haptic([20, 20]);
+        toast(`Marked as Interested in ${title}! 🎯 Saved in favorites!`);
       }
       saveMe(me);
       return;
@@ -1460,7 +1952,7 @@ function viewInterested(v) {
     `;
   }).join("") : `
     <div class="empty-state">
-      <p>No starred classes yet. Tap the <b>⭐</b> on any lecture or lab slot in <b>My classes</b> to add it to your favorites!</p>
+      <p>⭐ <b>Abhi koi starred class nahi hai dost!</b><br>Timetable me ⭐ dabao to add your favorite lectures here.</p>
     </div>
   `;
 
@@ -1480,7 +1972,7 @@ function viewInterested(v) {
     `;
   }).join("") : `
     <div class="empty-state">
-      <p>No interested events yet. Tap the <b>⭐</b> on any hackathon, workshop, or deadline in the <b>Noticeboard</b> to track it here!</p>
+      <p>🎯 <b>Abhi koi pinned event nahi hai dost!</b><br>Noticeboard me hackathons aur workshops par ⭐ dabao to track them here.</p>
     </div>
   `;
 
@@ -1493,14 +1985,14 @@ function viewInterested(v) {
       </div>
     </div>
 
-    <div class="card">
+    <div class="card happy-star pop-in">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h2>⭐ Starred Classes (${interestedClasses.length})</h2>
       </div>
       ${classesHTML}
     </div>
 
-    <div class="card">
+    <div class="card pop-in" style="margin-top:16px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h2>🎯 Interested Events & Activities (${interestedEvents.length})</h2>
       </div>
@@ -1551,7 +2043,7 @@ function viewAsk(v) {
       </div>
     </div>
 
-    <div class="card">
+    <div class="card happy-ask pop-in">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <span class="lab" style="margin:0;">Language Mode</span>
         <div class="lang-pills" id="langToggle">
@@ -1570,7 +2062,7 @@ function viewAsk(v) {
         ${A.questions.map((q) => `<button class="chip ${q.id === askQ ? "on" : ""}" data-q="${q.id}">${esc(q.t)}</button>`).join("")}
       </div>
 
-      <button class="btn primary" id="ask">Ask Helping Hand</button>
+      <button class="btn primary" id="ask">Ask Helping Hand ➔</button>
       <div id="ans"></div>
     </div>`;
 
@@ -1597,16 +2089,19 @@ function viewAsk(v) {
   $("#ask").onclick = async () => {
     if (!askQ) {
       shake($("#aq"));
-      return toast("Choose what you want to know.");
+      haptic([30]);
+      return toast("Pehle topic choose karo dost! ❓");
     }
     const b = $("#ask");
     b.classList.add("busy");
+    playSynthSound("click");
+    haptic([15]);
     
     $("#ans").innerHTML = `
       <div class="companion-card in" style="margin-top:14px; background:#F0FDFA; border-color:#99F6E4;">
         <div class="companion-mascot">${mascotSVG("think")}</div>
         <div class="companion-text">
-          <b style="color:#0F766E;">Helping Hand is checking...</b>
+          <b style="color:#0F766E;">AI Dost soch raha hai… 🤖✨</b>
           <p style="color:#115E59;">Reviewing verified ${B.name} records and AKTU scheme.</p>
           <div class="typing" style="margin-top:6px;"><i></i><i></i><i></i></div>
         </div>
@@ -1621,6 +2116,8 @@ function viewAsk(v) {
         lang: currentLang
       });
 
+      playSynthSound("success");
+      haptic([20, 20]);
       $("#ans").innerHTML = `
         <div class="ans">
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
@@ -1630,7 +2127,7 @@ function viewAsk(v) {
           ${esc(d.answer)}
         </div>`;
     } catch (e) {
-      $("#ans").innerHTML = `<div class="ans err">${esc(e.message)}</div>`;
+      $("#ans").innerHTML = `<div class="ans err">Arey yaar! ${esc(e.message)}</div>`;
     }
     b.classList.remove("busy");
   };
