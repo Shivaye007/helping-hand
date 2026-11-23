@@ -290,10 +290,28 @@ function toggleDarkMode() {
 function getTimeGreeting(name) {
   const hr = new Date().getHours();
   const cleanName = (name || "Dost").split(" ")[0];
-  if (hr >= 5 && hr < 12) return `Shubh Prabhat ☀️ ${cleanName}! Ready for first lecture?`;
-  if (hr >= 12 && hr < 17) return `Good afternoon 🌤️ ${cleanName}! Lunch ho gaya ya agla lab?`;
-  if (hr >= 17 && hr < 21) return `Good evening 🌆 ${cleanName}! Aaj ka din kaisa raha?`;
-  return `Late night grind 🌙 ${cleanName}? Paani peelo aur aaram se padho!`;
+  if (hr >= 5 && hr < 12) {
+    return {
+      title: `Shubh Prabhat, ${cleanName}! ☀️`,
+      wish: "Ready for your first lecture today?"
+    };
+  }
+  if (hr >= 12 && hr < 17) {
+    return {
+      title: `Good Afternoon, ${cleanName}! 🌤️`,
+      wish: "Lunch ho gaya ya agla lab session hai?"
+    };
+  }
+  if (hr >= 17 && hr < 21) {
+    return {
+      title: `Good Evening, ${cleanName}! 🌆`,
+      wish: "Aaj ki classes aur campus day kaisa raha?"
+    };
+  }
+  return {
+    title: `Late Night Grind, ${cleanName}! 🌙`,
+    wish: "Paani peelo aur aaram se padho dost!"
+  };
 }
 
 // ─── Campus Streak Tracker ───────────────────────────────────────────
@@ -588,33 +606,22 @@ function showWelcome(initialMode = "login") {
           ${authMode === "login" ? `
             <div class="welcome-emoji-float">🏫 📚 🗺️ ✨</div>
             <h1>Welcome Back!</h1>
-            <p>Apna username ya naam enter karo to restore your timetable & map.</p>
-            
-            ${userList.length > 0 ? `
-              <div class="quick-profiles-box">
-                <span class="quick-profiles-label">⚡ 1-Tap Quick Login (Saved Students):</span>
-                <div class="chips" id="quickChips">
-                  ${userList.map((u) => `
-                    <button class="chip ${u.username === (userList[0]?.username) ? "on" : ""}" data-quick="${esc(u.username)}" style="font-weight:700;">
-                      👤 <b>${esc(u.name)}</b> <small>(${esc(u.branch ? u.branch.toUpperCase() : "EL")})</small>
-                    </button>
-                  `).join("")}
-                </div>
-              </div>
-            ` : ""}
+            <p>Apna username ya naam enter karo to access your schedule & campus map.</p>
 
             <div class="auth-box">
               <label for="loginUser">Username or Full Name</label>
-              <input id="loginUser" type="text" autocomplete="username" placeholder="e.g. shivang ya Shivang Roy" value="${esc(userList[0]?.username || "")}">
+              <input id="loginUser" type="text" autocomplete="username" placeholder="e.g. shivang ya Shivang Roy" value="">
 
               <label for="loginPass" style="margin-top:12px">Passcode (agar set kiya ho)</label>
-              <input id="loginPass" type="password" autocomplete="current-password" placeholder="Passcode (khali chhod dein if none)">
+              <input id="loginPass" type="password" autocomplete="current-password" placeholder="Passcode (leave blank if none)">
             </div>
 
             <button class="btn primary" id="doLogin">Log In ➔</button>
-            <button class="btn ghost" id="doDemo" style="margin-top:8px; width:100%; text-align:center;">🚀 1-Tap Guest Demo Mode</button>
             <p class="hint" style="text-align:center; margin-top:14px;">
               Pehli baar aaye ho? <a href="#" id="toSignup" class="auth-link">Naya Student Profile banao ➔</a>
+            </p>
+            <p class="hint" style="text-align:center; margin-top:8px;">
+              Direct explore karna hai? <a href="#" id="doDemo" class="auth-link" style="color:var(--mint); font-weight:700;">🚀 Guest Demo Mode</a>
             </p>
           ` : `
             <div class="welcome-emoji-float">🏫 📚 🗺️ ✨</div>
@@ -710,7 +717,8 @@ function showWelcome(initialMode = "login") {
     });
 
     // 1-Tap Guest Demo Mode
-    $("#doDemo")?.addEventListener("click", () => {
+    $("#doDemo")?.addEventListener("click", (e) => {
+      e.preventDefault();
       const demoUser = lookupUser("shivang") || {
         username: "demo_student",
         name: "Demo Student",
@@ -1079,6 +1087,7 @@ function showApp() {
 
   const starCount = (me.interested?.classes?.length || 0) + (me.interested?.events?.length || 0);
   const isDark = document.body.classList.contains("dark");
+  const greeting = getTimeGreeting(me.name);
 
   root.innerHTML = `
     <header class="top">
@@ -1086,7 +1095,8 @@ function showApp() {
         <button class="mbtn" id="mas" aria-label="Tap the mascot to change moods">${mascotSVG("wave")}</button>
         <div class="hello">
           <div class="brand-heading">AITD Helping Hand</div>
-          <h1>${esc(getTimeGreeting(me.name))}</h1>
+          <h1>${esc(greeting.title)}</h1>
+          <div class="hello-wish">✨ ${esc(greeting.wish)}</div>
           <p>${esc(B.name)} · Sec ${esc(B.section)} · Room ${esc(B.classroom)} · Grp ${me.group}</p>
           <div class="header-tools">
             <span class="tool-pill streak-pill" id="pillStreak">🔥 ${me.streak || 1} Day Streak</span>

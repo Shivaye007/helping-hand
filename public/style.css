@@ -206,20 +206,25 @@ button { cursor: pointer; border: 0; background: none; }
   opacity: .9;
 }
 .hello h1 {
-  font-size: clamp(18px, 5vw, 24px);
+  font-size: clamp(17px, 4.5vw, 22px);
   font-weight: 800;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
+  line-height: 1.2;
+  margin: 0;
+  word-break: break-word;
+}
+.hello-wish {
+  font-size: clamp(11.5px, 3vw, 13px);
+  color: #FFD166;
+  font-weight: 700;
+  margin: 3px 0 2px;
+  line-height: 1.3;
+  word-break: break-word;
 }
 .hello p {
   margin: 2px 0 0;
   color: #CBD5E1;
-  font-size: clamp(11px, 3vw, 13px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: clamp(11px, 2.8vw, 12.5px);
+  line-height: 1.3;
 }
 .header-actions { flex: none; }
 .ghost {

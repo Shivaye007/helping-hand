@@ -19,7 +19,19 @@ const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GE
 
 // Persistent User Store with Supabase Cloud Sync Support
 const USERS_FILE = path.resolve("data/users.json");
+let memoryUsers = null;
+
 function loadServerUsers() {
+  if (process.env.NODE_ENV === "test") {
+    if (!memoryUsers) {
+      try {
+        memoryUsers = fs.existsSync(USERS_FILE) ? JSON.parse(fs.readFileSync(USERS_FILE, "utf8")) : {};
+      } catch {
+        memoryUsers = {};
+      }
+    }
+    return memoryUsers;
+  }
   try {
     if (fs.existsSync(USERS_FILE)) {
       return JSON.parse(fs.readFileSync(USERS_FILE, "utf8")) || {};
@@ -31,6 +43,10 @@ function loadServerUsers() {
 }
 
 function saveServerUsers(users) {
+  if (process.env.NODE_ENV === "test") {
+    memoryUsers = users;
+    return;
+  }
   try {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
   } catch (err) {

@@ -40,15 +40,5 @@
         "hack2026"
       ]
     }
-  },
-  "testuser": {
-    "username": "testuser",
-    "name": "Test Student",
-    "branch": "cs",
-    "group": 1,
-    "subjects": [
-      "maths1"
-    ],
-    "updatedAt": "2026-11-23T07:49:38.033Z"
   }
 }
