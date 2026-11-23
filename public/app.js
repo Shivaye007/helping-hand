@@ -522,11 +522,17 @@ function showApp() {
 }
 
 function tab(i) {
-  $$(".tabs button").forEach((b, k) => {
+  const tabs = $$(".tabs button");
+  const count = tabs.length || 4;
+  tabs.forEach((b, k) => {
     b.classList.toggle("on", k === i);
     b.setAttribute("aria-selected", k === i);
   });
-  $(".tabs .ink").style.transform = `translateX(${i * 100}%)`;
+  const ink = $(".tabs .ink");
+  if (ink) {
+    ink.style.width = `calc((100% - 10px) / ${count})`;
+    ink.style.transform = `translateX(${i * 100}%)`;
+  }
   const v = $("#view");
   v.className = "panel";
   void v.offsetWidth;

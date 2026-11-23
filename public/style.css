@@ -181,6 +181,11 @@ button { cursor: pointer; border: 0; background: none; }
   font-size: 14px;
   color: var(--mute);
   transition: color .25s;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 .tabs button.on { color: #fff; }
 .tabs .ink {
@@ -188,10 +193,10 @@ button { cursor: pointer; border: 0; background: none; }
   top: 5px;
   bottom: 5px;
   left: 5px;
-  width: calc((100% - 10px) / 3);
+  width: calc((100% - 10px) / 4);
   background: var(--ink);
   border-radius: 13px;
-  transition: transform .4s var(--spring);
+  transition: transform .4s var(--spring), width .3s var(--ease);
 }
 .panel { animation: rise .4s var(--ease); }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
@@ -559,8 +564,24 @@ input[type=text]:focus {
 
 /* ─── My classes tab ──────────────────────────────────────────────── */
 .days { display: flex; gap: 5px; margin-bottom: 14px; }
-.days .chip { flex: 1; padding: 9px 0; text-align: center; position: relative; font-size: 13px; }
-.chip .today { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--sun); margin-left: 5px; vertical-align: 1px; }
+.days .chip {
+  flex: 1;
+  padding: 9px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  position: relative;
+  font-size: 13px;
+}
+.chip .today {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sun);
+  vertical-align: 0;
+}
 
 .slot {
   display: flex;
