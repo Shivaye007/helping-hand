@@ -6,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node scripts/check-map.js"
+    "check": "node scripts/check-map.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
