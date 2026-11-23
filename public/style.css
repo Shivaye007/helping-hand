@@ -146,8 +146,18 @@ button { cursor: pointer; border: 0; background: none; }
   gap: 14px;
 }
 .hello { flex: 1; min-width: 0; }
+.brand-heading {
+  font-family: "Baloo 2", sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--sun);
+  margin-bottom: 2px;
+  line-height: 1.2;
+}
 .hello h1 { font-size: 24px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hello p { margin: 2px 0 0; color: var(--sun); font-size: 13px; }
+.hello p { margin: 2px 0 0; color: #CBD5E1; font-size: 13px; }
 .ghost {
   padding: 8px 14px;
   border-radius: 999px;

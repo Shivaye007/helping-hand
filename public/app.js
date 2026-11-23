@@ -734,6 +734,7 @@ function showApp() {
       <div class="in">
         <button class="mbtn" id="mas" aria-label="Tap the mascot to change moods">${mascotSVG("wave")}</button>
         <div class="hello">
+          <div class="brand-heading">AITD Helping Hand</div>
           <h1>Hi, ${esc(me.name)}!</h1>
           <p>${esc(B.name)} · Sec ${esc(B.section)} · Room ${esc(B.classroom)} · Grp ${me.group}</p>
         </div>
