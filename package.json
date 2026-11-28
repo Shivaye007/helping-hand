@@ -4,6 +4,7 @@
   "description": "Helping Hand: AI campus guide for AITD Kanpur (Gemini powered)",
   "type": "module",
   "main": "server.js",
+  "license": "MIT",
   "scripts": {
     "start": "node server.js",
     "check": "node scripts/check-map.js",
@@ -11,7 +12,9 @@
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
+    "adm-zip": "^0.6.1",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "pptxgenjs": "^4.0.1"
   }
 }

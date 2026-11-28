@@ -386,9 +386,9 @@ async function createPresentation() {
         text: 'Live clock matches student schedule. Shows teacher name, room code, and countdown (e.g. "FEcE with Shashank Srivastava in B-202 · ends in 20 min").'
       },
       {
-        pill: '⏰ UPCOMING CLASS',
+        pill: '⏰ UPCOMING & LATE ALERTS',
         color: GOLD,
-        text: 'During break intervals, counts down to the next lecture and shows lab venue (e.g. "Next: BEC Lab in 15 min @ E-113").'
+        text: 'Counts down to the next lecture/lab during breaks, and shows a smart "Running Late?" alert if a class has already started.'
       },
       {
         pill: '🚀 1-CLICK NAVIGATION',
@@ -526,21 +526,21 @@ async function createPresentation() {
   }
 
   // ==========================================
-  // SLIDE 6: PROFILES, REMINDERS & INTERESTED HUB
+  // SLIDE 6: PROFILES, CLOUD SYNC & INTERESTED HUB
   // ==========================================
   {
     const s6 = pres.addSlide();
-    initSlide(s6, 6, 'Profiles, Custom Reminders & "Interested" Hub', 'Client-side authentication with session persistence and personalized noticeboard watchlists');
+    initSlide(s6, 6, 'Profiles, Cloud Sync & "Interested" Hub', 'Persistent user profiles with optional Supabase cloud sync, fuzzy login, and personalized watchlists');
 
     const profileFeatures = [
       {
         icon: '👤',
-        badge: 'DUAL AUTHENTICATION',
-        title: 'Sign In & Sign Up System',
+        badge: 'CLOUD-READY AUTH',
+        title: 'Smart Sign In & Sign Up',
         points: [
-          'Segmented toggle for [Sign In / Log In] and [New Student / Sign Up].',
-          'Fast 1-click login: saved profile chips restore branch, section, and timetable instantly.',
-          'Optional passcode security with profile editor modal to update details anytime.'
+          'Segmented toggle for [Sign In / Log In] and [New Student / Sign Up] with fuzzy name matching.',
+          'Fast 1-tap quick login: saved profile chips restore branch, section, and timetable instantly.',
+          'Server-side persistence (users.json) with optional Supabase cloud sync & profile editor.'
         ]
       },
       {
@@ -612,11 +612,93 @@ async function createPresentation() {
   }
 
   // ==========================================
-  // SLIDE 7: GEMINI AI & ARCHITECTURE
+  // SLIDE 7: PRODUCTIVITY, WELLNESS & GAMIFIED UX
+  // ==========================================
+  {
+    const s7New = pres.addSlide();
+    initSlide(s7New, 7, 'Student Productivity, Wellness & Gamified UX', 'Built-in study tools, attendance tracking, and mobile-first polish that make daily campus life fun');
+
+    const uxCards = [
+      {
+        icon: '⏱️',
+        badge: 'ACADEMIC FOCUS',
+        title: 'Pomodoro & 75% Attendance',
+        points: [
+          'Built-in 25-min Pomodoro Focus Timer with study/break cycles and confetti celebration.',
+          'Per-subject Attendance Tracker helps students monitor and stay above the 75% exam threshold.',
+          'Smart "Late-to-Class" live banner alerts students when a lecture has already begun.'
+        ]
+      },
+      {
+        icon: '🔥',
+        badge: 'ENGAGEMENT & THEME',
+        title: 'Streaks, Quotes & Dark Mode',
+        points: [
+          'Daily Campus Streak Tracker rewards consistent logins and builds healthy study habits.',
+          'Daily College Quotes card serves humorous, relatable canteen & exam motivation.',
+          'Persistent Dark / Light mode toggle with dynamic branch-specific color accents.'
+        ]
+      },
+      {
+        icon: '✨',
+        badge: 'SENSORY POLISH',
+        title: 'Sound, Haptics & Gestures',
+        points: [
+          'Web Audio API synthesized sound effects (with mute toggle) for tactile feedback.',
+          'Mobile haptic vibration feedback and smooth swipe gestures to switch tabs effortlessly.',
+          'Canvas confetti bursts & micro-animations celebrate milestones without heavy libraries.'
+        ]
+      }
+    ];
+
+    uxCards.forEach((f, i) => {
+      const x = 0.6 + i * 2.95;
+      s7New.addShape(pres.shapes.ROUNDED_RECTANGLE, {
+        x, y: 1.4, w: 2.8, h: 3.8,
+        fill: { color: CARD_NAVY },
+        line: { color: BORDER_NAVY, width: 1 },
+        rectRadius: 0.15
+      });
+
+      s7New.addShape(pres.shapes.OVAL, {
+        x: x + 0.2, y: 1.6, w: 0.55, h: 0.55,
+        fill: { color: '1E293B' },
+        line: { color: CYAN, width: 1.5 }
+      });
+      s7New.addText(f.icon, {
+        x: x + 0.2, y: 1.6, w: 0.55, h: 0.55,
+        fontSize: 16, align: 'center', valign: 'middle'
+      });
+
+      s7New.addText(f.badge, {
+        x: x + 0.85, y: 1.7, w: 1.75, h: 0.35,
+        fontSize: 8, fontFace: FONT_HEAD, bold: true, color: CYAN,
+        valign: 'middle'
+      });
+
+      s7New.addText(f.title, {
+        x: x + 0.2, y: 2.25, w: 2.4, h: 0.45,
+        fontSize: 13, fontFace: FONT_HEAD, bold: true, color: WHITE,
+        valign: 'middle'
+      });
+
+      const bullets = f.points.map(p => ({
+        text: p + '\n\n',
+        options: { fontSize: 10, fontFace: FONT_BODY, color: 'CBD5E1', bullet: true }
+      }));
+      s7New.addText(bullets, {
+        x: x + 0.2, y: 2.75, w: 2.4, h: 2.3,
+        valign: 'top'
+      });
+    });
+  }
+
+  // ==========================================
+  // SLIDE 8: GEMINI AI & ARCHITECTURE
   // ==========================================
   {
     const s7 = pres.addSlide();
-    initSlide(s7, 7, 'Gemini AI Doubt Solver & Production Engineering', 'Google Gemini integration with English ⇄ Hinglish toggle and automated test suite');
+    initSlide(s7, 8, 'Gemini AI Doubt Solver & Production Engineering', 'Google Gemini integration with English ⇄ Hinglish toggle, Supabase sync, and 22 automated tests');
 
     // Left Card: Gemini AI & Hinglish
     s7.addShape(pres.shapes.ROUNDED_RECTANGLE, {
@@ -681,15 +763,15 @@ async function createPresentation() {
       },
       {
         h: 'Automated Test Suite (npm test):',
-        t: '20 automated unit/integration tests (node:test) validating Dijkstra routing, lift priority, and all branch schedules.'
+        t: '22 automated unit/integration tests (node:test) validating Dijkstra routing, lift priority, Hinglish AI, and user APIs.'
       },
       {
         h: 'Automated CI / GitHub Actions:',
         t: '.github/workflows/test.yml validates every pull request and commit automatically.'
       },
       {
-        h: 'Live Deployment on Render:',
-        t: 'Continuous deployment with zero-downtime rolling updates and automatic offline fallback.'
+        h: 'Cloud Sync & MIT Open-Source:',
+        t: 'Live on Render with optional Supabase cloud DB sync and MIT License for community adoption.'
       }
     ];
 
@@ -706,20 +788,114 @@ async function createPresentation() {
   }
 
   // ==========================================
-  // SLIDE 8: CONCLUSION & NEXT STEPS (IDENTICAL TO ORIGINAL)
+  // SLIDE 9: SOCIETAL BENEFIT & MULTI-COLLEGE VISION
+  // ==========================================
+  {
+    const s9 = pres.addSlide();
+    initSlide(s9, 9, 'Societal Benefit: From AITD Kanpur to Every Campus', 'Starting as a free student companion at AITD — architected to scale as an open-source blueprint for all colleges');
+
+    // Left Card: Societal Benefit (Why It Matters)
+    s9.addShape(pres.shapes.ROUNDED_RECTANGLE, {
+      x: 0.6, y: 1.4, w: 4.3, h: 3.8,
+      fill: { color: CARD_NAVY },
+      line: { color: BORDER_NAVY, width: 1 },
+      rectRadius: 0.15
+    });
+
+    s9.addText('🤝 Built for Societal Benefit', {
+      x: 0.85, y: 1.6, w: 3.8, h: 0.4,
+      fontSize: 14, fontFace: FONT_HEAD, bold: true, color: GOLD
+    });
+
+    const societalPoints = [
+      {
+        h: 'Bridging the First-Year Transition:',
+        t: 'Helps freshers—especially students from rural and tier-2/3 towns—navigate unfamiliar campuses without hesitation.'
+      },
+      {
+        h: 'Accessibility & Inclusion First:',
+        t: 'Lift-prioritized routing and hands-free Web Speech voice directions empower students with mobility or visual needs.'
+      },
+      {
+        h: 'Zero Cost, Zero Language Barrier:',
+        t: '100% free web app with natural English ⇄ Hinglish support—works on any budget smartphone browser without installs.'
+      },
+      {
+        h: 'Academic Equity & Well-Being:',
+        t: 'Free Pomodoro timer, 75% attendance tracker, and unit-wise syllabus hub keep every student organized from day one.'
+      }
+    ];
+
+    societalPoints.forEach((p, i) => {
+      const y = 2.05 + i * 0.72;
+      s9.addText([
+        { text: `${p.h}\n`, options: { bold: true, color: CYAN, fontSize: 10 } },
+        { text: p.t, options: { color: 'CBD5E1', fontSize: 9.5 } }
+      ], {
+        x: 0.85, y, w: 3.8, h: 0.65,
+        fontFace: FONT_BODY, valign: 'top'
+      });
+    });
+
+    // Right Card: Scaling to All Colleges
+    s9.addShape(pres.shapes.ROUNDED_RECTANGLE, {
+      x: 5.1, y: 1.4, w: 4.3, h: 3.8,
+      fill: { color: CARD_NAVY },
+      line: { color: GOLD, width: 1.2 },
+      rectRadius: 0.15
+    });
+
+    s9.addText('🌍 Scaling Beyond AITD to All Colleges', {
+      x: 5.35, y: 1.6, w: 3.8, h: 0.4,
+      fontSize: 14, fontFace: FONT_HEAD, bold: true, color: GOLD
+    });
+
+    const scalePoints = [
+      {
+        h: 'Live Pilot at AITD Kanpur Today:',
+        t: 'Proven across 7 first-year sections, 38 campus locations, and 10 AKTU foundation courses.'
+      },
+      {
+        h: 'Plug-and-Play JSON Architecture:',
+        t: 'Separates engine from data—any college can onboard in hours by swapping campus.json and academics.json.'
+      },
+      {
+        h: 'MIT Open-Source Licensed:',
+        t: 'Openly licensed so student clubs, NSS/technical societies, and universities can fork and deploy freely.'
+      },
+      {
+        h: 'Nationwide Campus Impact:',
+        t: 'Can grow into a shared open-source network of smart campus guides helping lakhs of freshers across India.'
+      }
+    ];
+
+    scalePoints.forEach((p, i) => {
+      const y = 2.05 + i * 0.72;
+      s9.addText([
+        { text: `${p.h}\n`, options: { bold: true, color: GREEN, fontSize: 10 } },
+        { text: p.t, options: { color: 'CBD5E1', fontSize: 9.5 } }
+      ], {
+        x: 5.35, y, w: 3.8, h: 0.65,
+        fontFace: FONT_BODY, valign: 'top'
+      });
+    });
+  }
+
+  // ==========================================
+  // SLIDE 10: CONCLUSION & NEXT STEPS
   // ==========================================
   {
     const s8 = pres.addSlide();
     s8.background = { color: BG_NAVY };
 
-    // Slide Number 8
+    // Slide Number 10
     s8.addShape(pres.shapes.ROUNDED_RECTANGLE, {
       x: 9.1, y: 0.35, w: 0.55, h: 0.45,
       fill: { color: CARD_NAVY },
       line: { color: BORDER_NAVY, width: 1 },
       rectRadius: 0.1
     });
-    s8.addText('8', {
+    s8.addText('10', {
       x: 9.1, y: 0.35, w: 0.55, h: 0.45,
       fontSize: 14, fontFace: FONT_HEAD, bold: true, color: GOLD,
       align: 'center', valign: 'middle'
@@ -745,9 +921,9 @@ async function createPresentation() {
     });
 
     const decisions = [
-      'Keep it a website, or add a mobile app?',
-      'Who maintains the map and academic data?',
-      'How will syllabus and faculty data reach the AI?'
+      'Onboard more colleges via community JSON templates?',
+      'Add a faculty/admin portal for live notices & timetables?',
+      'Package as an installable PWA with offline map caching?'
     ];
     s8.addText(decisions.map(d => ({
       text: d + '\n\n',
@@ -773,8 +949,8 @@ async function createPresentation() {
     const refs = [
       'Personal problems & first-year observations',
       'Student discussions & college feedback',
-      'Google Gemini API (@google/genai)',
-      'Claude (Anthropic)'
+      'Google Gemini API (@google/genai) & Supabase',
+      'MIT Open-Source License (Community-Ready)'
     ];
     s8.addText(refs.map(r => ({
       text: r + '\n\n',
